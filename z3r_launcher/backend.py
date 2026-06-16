@@ -2533,7 +2533,7 @@ def is_safe_repo_path(path: str) -> bool:
 
 def fetch_latest_release(update_dir: Path) -> dict[str, Any]:
     release_json = update_dir / "latest-release.json"
-    download_url_to_file("https://api.github.com/repos/xander-haj/lxy/releases/latest", release_json, github_api=True)
+    download_url_to_file("https://api.github.com/repos/xander-haj/Z3R-Launcher/releases/latest", release_json, github_api=True)
     try:
         release = json.loads(release_json.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
