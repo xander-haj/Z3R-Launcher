@@ -1,0 +1,226 @@
+/* This stylesheet isolates the Randomizer Setup screen.
+   The .card-setup-actions layout used by project cards now lives in styles.css
+   next to .project-card itself, because it was never randomizer-specific and the
+   previous flex/flex-wrap override here is what caused the bottom card buttons
+   to stack into two rows at maximized window widths. */
+
+.randomizer-layout {
+  display: grid;
+  gap: 22px;
+}
+
+.randomizer-hero {
+  align-items: start;
+  grid-template-columns: minmax(460px, 1fr) minmax(280px, 430px);
+  gap: 64px;
+  min-height: 470px;
+}
+
+.randomizer-instructions {
+  max-height: none;
+  margin-top: 22px;
+  color: var(--text);
+}
+
+.randomizer-instructions .step-list {
+  gap: 18px;
+  margin-top: 0;
+}
+
+.randomizer-instructions .step-list li {
+  min-height: auto;
+  padding-left: 48px;
+  line-height: 1.58;
+}
+
+.randomizer-instructions .step-list li::before {
+  top: 0;
+}
+
+.randomizer-hero .route-stack {
+  width: min(100%, 430px);
+  justify-self: end;
+}
+
+.randomizer-configs {
+  display: grid;
+  gap: 22px;
+}
+
+.randomizer-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 22px;
+}
+
+.randomizer-form label {
+  display: grid;
+  gap: 8px;
+}
+
+.randomizer-form span {
+  color: var(--gold-bright);
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.randomizer-form input[type="text"], .randomizer-form select {
+  min-height: 46px;
+  border: 2px solid var(--gold-dim);
+  border-radius: var(--radius);
+  padding: 0 14px;
+  color: var(--text);
+  background: rgba(5, 18, 10, 0.72);
+  font: inherit;
+}
+
+/* Two-column wrapper that pairs the excluded-items input + dropdown with the
+   excluded-categories input + dropdown on a single row. Spans the full form
+   width so the rest of the randomizer-form grid stays untouched. */
+.randomizer-exclusion-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+  grid-column: 1 / -1;
+}
+
+/* Each column stacks its label/input above its dropdown panel. */
+.randomizer-exclusion-column {
+  display: grid;
+  gap: 10px;
+}
+
+/* Bordered panel that holds clickable option rows. Always visible (no collapse
+   toggle) per the agreed plan. Scrolls internally so the form layout stays
+   stable even when the masterlist returns dozens of item ids. */
+.exclusion-dropdown-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 10px;
+  border: 2px solid var(--gold-dim);
+  border-radius: var(--radius);
+  background: rgba(5, 18, 10, 0.72);
+}
+
+/* Empty-state copy shown when the masterlist has not been generated yet. */
+.exclusion-empty {
+  margin: 0;
+  padding: 4px 6px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* Default option appearance — neutral row that visually blends with the panel
+   background until it is selected or disabled. */
+.exclusion-option {
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 4px 12px;
+  border: 2px solid var(--gold-dim);
+  border-radius: var(--radius);
+  background: rgba(5, 18, 10, 0.72);
+  color: var(--muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Selected = excluded. Matches the previous .item-chip.selected palette so the
+   visual language carries over from the old chip grid. */
+.exclusion-option.selected {
+  border-color: var(--red);
+  color: var(--text);
+  background: rgba(65, 19, 12, 0.82);
+}
+
+/* Disabled = parent category is already excluded, so this individual item is
+   covered and should not be re-selectable. pointer-events:none also blocks
+   the click handler defensively even though the handler short-circuits. */
+.exclusion-option.disabled {
+  opacity: 0.45;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+.randomizer-toggle-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  grid-column: 1 / -1;
+}
+
+.randomizer-form .toggle-row {
+  display: flex;
+  align-items: center;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 2px solid var(--gold-dim);
+  border-radius: var(--radius);
+  background: rgba(5, 18, 10, 0.72);
+}
+
+.randomizer-form .toggle-row input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--gold);
+}
+
+.randomizer-config-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 22px;
+}
+
+.randomizer-config-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  gap: 8px 18px;
+  min-height: 88px;
+  padding: 20px 24px;
+  border: 2px solid var(--gold-dim);
+  border-radius: var(--radius);
+  background: rgba(7, 19, 13, 0.9);
+}
+
+.randomizer-config-row strong {
+  color: var(--text);
+}
+
+.randomizer-config-row span {
+  color: var(--gold-bright);
+  text-transform: uppercase;
+}
+
+.randomizer-config-row.state-missing {
+  border-color: rgba(228, 93, 66, 0.86);
+}
+
+.randomizer-config-row.state-found span {
+  color: var(--green);
+}
+
+.randomizer-config-row .path-line {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 960px) {
+  .randomizer-hero {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    min-height: 0;
+    padding: 28px;
+  }
+  .randomizer-hero .route-stack {
+    width: 100%;
+    justify-self: stretch;
+  }
+  .randomizer-form, .randomizer-toggle-grid, .randomizer-config-list, .randomizer-exclusion-grid {
+    grid-template-columns: 1fr;
+  }
+}

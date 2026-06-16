@@ -1,0 +1,380 @@
+{
+  "macos": {
+    "git": {
+      "title": "Install Git on macOS",
+      "meta": "Missing Git",
+      "summary": "Git is needed to clone or update Z3R. Use whichever install route you already trust on your Mac.",
+      "steps": [
+        {
+          "title": "Check for Apple command line tools",
+          "text": "Open Terminal and run `git --version`. macOS may prompt you to install Apple's command line developer tools."
+        },
+        {
+          "title": "Use Homebrew if you prefer it",
+          "text": "If Homebrew is already installed, run `brew install git`, then reopen the launcher and run checks again."
+        }
+      ],
+      "links": [
+        {
+          "label": "Git macOS downloads",
+          "url": "https://git-scm.com/download/mac"
+        }
+      ]
+    },
+    "python": {
+      "title": "Install Python on macOS",
+      "meta": "Missing Python",
+      "summary": "Python is needed for the virtual environment and asset extraction tools.",
+      "steps": [
+        {
+          "title": "Install Python 3",
+          "text": "Install Python 3 from python.org or through Homebrew with `brew install python`."
+        },
+        {
+          "title": "Confirm the command works",
+          "text": "Open a new Terminal window and run `python3 --version`, then return to the launcher and run checks again."
+        }
+      ],
+      "links": [
+        {
+          "label": "Python macOS downloads",
+          "url": "https://www.python.org/downloads/macos/"
+        }
+      ]
+    },
+    "make": {
+      "title": "Install Make on macOS",
+      "meta": "Missing Make",
+      "summary": "Make drives the macOS build path for Z3R.",
+      "steps": [
+        {
+          "title": "Install Apple command line tools",
+          "text": "Open Terminal and run `xcode-select --install`, then follow the Apple installer prompts."
+        },
+        {
+          "title": "Recheck Make",
+          "text": "After installation, run `make --version` or return to the launcher and press Run Checks."
+        }
+      ],
+      "links": [
+        {
+          "label": "Apple developer tools",
+          "url": "https://developer.apple.com/xcode/resources/"
+        }
+      ]
+    },
+    "c-compiler": {
+      "title": "Install a C compiler on macOS",
+      "meta": "Missing C compiler",
+      "summary": "Z3R needs clang or another C compiler to build the native executable.",
+      "steps": [
+        {
+          "title": "Install Apple command line tools",
+          "text": "Open Terminal and run `xcode-select --install`. Apple's tools include clang and the cc compatibility command."
+        },
+        {
+          "title": "Recheck the compiler",
+          "text": "After installation, run `clang --version` or return to the launcher and press Run Checks."
+        }
+      ],
+      "links": [
+        {
+          "label": "Apple developer tools",
+          "url": "https://developer.apple.com/xcode/resources/"
+        }
+      ]
+    },
+    "sdl2-dev": {
+      "title": "Install SDL2 development files on macOS",
+      "meta": "Missing SDL2",
+      "summary": "The Makefile uses SDL2 compiler flags while building Z3R.",
+      "steps": [
+        {
+          "title": "Install SDL2",
+          "text": "If Homebrew is already installed, run `brew install sdl2`."
+        },
+        {
+          "title": "Confirm sdl2-config",
+          "text": "Open a new Terminal window and run `sdl2-config --version`, then run launcher checks again."
+        }
+      ],
+      "links": [
+        {
+          "label": "SDL releases",
+          "url": "https://github.com/libsdl-org/SDL/releases"
+        }
+      ]
+    }
+  },
+  "windows": {
+    "git": {
+      "title": "Install Git on Windows",
+      "meta": "Missing Git",
+      "summary": "Git is needed to clone or update Z3R from GitHub.",
+      "steps": [
+        {
+          "title": "Download Git for Windows",
+          "text": "Use the official Git for Windows installer. When the installer asks how Git should be used from the command line, keep the option that adds Git to PATH."
+        },
+        {
+          "title": "Confirm Git is on PATH",
+          "text": "Open a new PowerShell window and run `git --version`. If Windows cannot find Git, restart Windows or add Git's `cmd` folder to PATH from Settings > System > About > Advanced system settings > Environment Variables."
+        },
+        {
+          "title": "Restart the launcher",
+          "text": "After installation, close and reopen the launcher so Git is available on PATH, then run checks again."
+        }
+      ],
+      "links": [
+        {
+          "label": "Git for Windows",
+          "url": "https://git-scm.com/download/win"
+        }
+      ]
+    },
+    "python": {
+      "title": "Install Python on Windows",
+      "meta": "Missing Python",
+      "summary": "Python is needed for the virtual environment and asset extraction tools.",
+      "steps": [
+        {
+          "title": "Download Python",
+          "text": "Install Python 3 from python.org. On the first installer screen, enable the `Add python.exe to PATH` checkbox before pressing Install Now."
+        },
+        {
+          "title": "Confirm Python is on PATH",
+          "text": "Open a new PowerShell window and run `py --version` and `python --version`. If neither works, add Python from Settings > System > About > Advanced system settings > Environment Variables > Path."
+        },
+        {
+          "title": "Confirm the launcher can see Python",
+          "text": "Open a new PowerShell window and run `py --version`, then return to the launcher and run checks again."
+        }
+      ],
+      "links": [
+        {
+          "label": "Python Windows downloads",
+          "url": "https://www.python.org/downloads/windows/"
+        }
+      ]
+    },
+    "msbuild": {
+      "title": "Install MSBuild on Windows",
+      "meta": "Missing MSBuild",
+      "summary": "MSBuild is required for the Visual Studio build route.",
+      "steps": [
+        {
+          "title": "Install Build Tools for Visual Studio",
+          "text": "Download Build Tools for Visual Studio and select the Desktop development with C++ workload."
+        },
+        {
+          "title": "Make MSBuild available",
+          "text": "The Visual Studio installer usually exposes MSBuild through Developer PowerShell. If the launcher still cannot find `msbuild`, add the Visual Studio MSBuild `Bin` folder to PATH or start the launcher from Developer PowerShell."
+        },
+        {
+          "title": "Reopen the launcher",
+          "text": "After installation finishes, reopen the launcher or run it from a Developer PowerShell, then run checks again."
+        }
+      ],
+      "links": [
+        {
+          "label": "Microsoft MSBuild guidance",
+          "url": "https://learn.microsoft.com/en-us/visualstudio/msbuild/msbuild?view=visualstudio"
+        }
+      ]
+    },
+    "powershell": {
+      "title": "Enable PowerShell on Windows",
+      "meta": "Missing PowerShell",
+      "summary": "PowerShell is used by Windows setup commands and should normally be present on supported Windows installs.",
+      "steps": [
+        {
+          "title": "Open Windows features or install PowerShell",
+          "text": "Use the Microsoft guidance to restore Windows PowerShell or install the current PowerShell package."
+        },
+        {
+          "title": "Confirm PowerShell is on PATH",
+          "text": "Open Command Prompt and run `powershell -NoProfile -Command \"$PSVersionTable.PSVersion\"`. If it is not found, add the PowerShell install folder to PATH from Environment Variables."
+        },
+        {
+          "title": "Run checks again",
+          "text": "After PowerShell opens from the Start menu, return to the launcher and run checks again."
+        }
+      ],
+      "links": [
+        {
+          "label": "Install PowerShell",
+          "url": "https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows"
+        }
+      ]
+    },
+    "tcc": {
+      "title": "Add TCC to the Z3R folder",
+      "meta": "Missing TCC",
+      "summary": "TCC is only needed for the lightweight Windows TCC build route.",
+      "steps": [
+        {
+          "title": "Download the Windows ZIP",
+          "text": "Open the TCC release page and download the Windows ZIP archive. Extract it, then find `tcc.exe` and the included DLL files inside the extracted folder."
+        },
+        {
+          "title": "Place TCC under third_party",
+          "text": "Copy the extracted TCC files so `tcc.exe` is at `{projectPath}\\third_party\\tcc\\tcc.exe`. Keep the DLL files from the ZIP in that same TCC folder."
+        },
+        {
+          "title": "Run checks again",
+          "text": "After the file is in place, return to the launcher and press Run Checks."
+        }
+      ],
+      "links": [
+        {
+          "label": "Tiny C Compiler",
+          "url": "https://github.com/FitzRoyX/tinycc/releases/tag/tcc_20251005"
+        }
+      ]
+    },
+    "sdl2": {
+      "title": "Add SDL2 to the Z3R folder",
+      "meta": "Missing SDL2",
+      "summary": "SDL2.dll is required by the Windows TCC route and by the built game executable.",
+      "steps": [
+        {
+          "title": "Download SDL2 development files",
+          "text": "Download the SDL2 2.30.11 development package for Visual C++ from the linked release page."
+        },
+        {
+          "title": "Place the DLL where Z3R expects it",
+          "text": "Put `SDL2.dll` at `{projectPath}\\third_party\\SDL2-2.26.3\\lib\\x64\\SDL2.dll`."
+        }
+      ],
+      "links": [
+        {
+          "label": "SDL releases",
+          "url": "https://github.com/libsdl-org/SDL/releases/tag/release-2.30.11"
+        }
+      ]
+    }
+  },
+  "linux": {
+    "git": {
+      "title": "Install Git on Linux",
+      "meta": "Missing Git",
+      "summary": "Git is needed to clone or update Z3R from GitHub.",
+      "steps": [
+        {
+          "title": "Use your distribution package manager",
+          "text": "Install the package named `git` with your distro's normal package manager."
+        },
+        {
+          "title": "Run checks again",
+          "text": "Open a new terminal, confirm `git --version`, then return to the launcher."
+        }
+      ],
+      "links": [
+        {
+          "label": "Git Linux downloads",
+          "url": "https://git-scm.com/download/linux"
+        }
+      ]
+    },
+    "python": {
+      "title": "Install Python on Linux",
+      "meta": "Missing Python",
+      "summary": "Python is needed for the virtual environment and asset extraction tools.",
+      "steps": [
+        {
+          "title": "Install Python 3",
+          "text": "Install your distro's Python 3 package."
+        },
+        {
+          "title": "Install venv support on Debian/Ubuntu",
+          "text": "Run `sudo apt-get install python3-venv`, or install the versioned package Python reports."
+        },
+        {
+          "title": "Confirm Python works",
+          "text": "Run `python3 --version`, then return to the launcher and run checks again."
+        }
+      ],
+      "links": [
+        {
+          "label": "Python downloads",
+          "url": "https://www.python.org/downloads/"
+        }
+      ]
+    },
+    "make": {
+      "title": "Install Make on Linux",
+      "meta": "Missing Make",
+      "summary": "Make drives the Linux build path for Z3R.",
+      "steps": [
+        {
+          "title": "Install build tools",
+          "text": "Install your distro's build-essential or base-devel package group, which includes Make."
+        },
+        {
+          "title": "Run checks again",
+          "text": "Confirm `make --version`, then return to the launcher."
+        }
+      ],
+      "links": [
+        {
+          "label": "GNU Make",
+          "url": "https://www.gnu.org/software/make/"
+        }
+      ]
+    },
+    "c-compiler": {
+      "title": "Install a C compiler on Linux",
+      "meta": "Missing C compiler",
+      "summary": "Z3R needs gcc or clang to build the native executable. Some SteamOS/Steam Deck environments include SDL2 and Make but do not provide a cc compiler command.",
+      "steps": [
+        {
+          "title": "Install build tools",
+          "text": "On Debian/Ubuntu or apt-based systems, install `build-essential`. On Arch-based systems, install a compiler package such as `gcc` or the `base-devel` group."
+        },
+        {
+          "title": "Packaged Linux note",
+          "text": "AppImage and Flatpak launcher releases download the matching Z3R executable instead of compiling it locally. Source runs and native Linux builds still need gcc or clang from the system."
+        },
+        {
+          "title": "Run checks again",
+          "text": "Confirm `gcc --version` or `clang --version`, then return to the launcher."
+        }
+      ],
+      "links": [
+        {
+          "label": "GCC",
+          "url": "https://gcc.gnu.org/"
+        },
+        {
+          "label": "LLVM clang",
+          "url": "https://clang.llvm.org/"
+        }
+      ]
+    },
+    "sdl2-dev": {
+      "title": "Install SDL2 development files on Linux",
+      "meta": "Missing SDL2",
+      "summary": "The Makefile uses SDL2 compiler and linker flags while building Z3R.",
+      "steps": [
+        {
+          "title": "Install SDL2 development package",
+          "text": "On Debian/Ubuntu or apt-based Unix systems, run `sudo apt-get install libsdl2-dev`."
+        },
+        {
+          "title": "Other Linux distributions",
+          "text": "Use your distro's SDL2 development package, usually `libsdl2-dev` or `sdl2-devel`."
+        },
+        {
+          "title": "Confirm sdl2-config",
+          "text": "Run `sdl2-config --version`, then return to the launcher and run checks again."
+        }
+      ],
+      "links": [
+        {
+          "label": "SDL releases",
+          "url": "https://github.com/libsdl-org/SDL/releases"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,232 @@
+/* Features view styling for boot-time zelda3.ini toggles. */
+
+.features-shell {
+  display: grid;
+  gap: 22px;
+}
+
+.features-author {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.features-author:empty {
+  display: none;
+}
+
+.features-content {
+  display: grid;
+  max-width: 720px;
+  gap: 12px;
+}
+
+.features-empty {
+  margin: 0;
+  color: var(--muted);
+}
+
+.features-toggle-row {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  min-height: 78px;
+  padding: 16px 18px;
+  border: 2px solid var(--gold-dim);
+  border-radius: var(--radius);
+  background: rgba(7, 19, 13, 0.78);
+  cursor: pointer;
+}
+
+.features-checkbox {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--gold);
+}
+
+.features-toggle-copy {
+  display: grid;
+  gap: 5px;
+}
+
+.features-toggle-label {
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.features-toggle-state {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.features-asset-section {
+  display: grid;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 2px solid var(--gold-dim);
+  border-radius: var(--radius);
+  background: rgba(7, 19, 13, 0.78);
+}
+
+.features-asset-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.features-asset-status {
+  min-width: 116px;
+  padding: 6px 10px;
+  border: 2px solid currentColor;
+  border-radius: var(--radius);
+  font-size: 0.76rem;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.features-asset-status.available {
+  color: var(--green);
+}
+
+.features-asset-status.missing {
+  color: var(--red);
+}
+
+.features-action-row,
+.features-picker-row {
+  display: grid;
+  grid-template-columns: repeat(3, max-content);
+  gap: 10px;
+  justify-content: start;
+}
+
+.features-picker-row {
+  grid-template-columns: minmax(260px, 1fr) max-content;
+}
+
+.features-picker-control {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  gap: 10px;
+}
+
+.features-filter-input {
+  min-height: 48px;
+  padding: 0 12px;
+  border: 2px solid var(--gold-dim);
+  border-radius: var(--radius);
+  background: rgba(5, 18, 10, 0.78);
+  color: var(--text);
+  font: inherit;
+}
+
+.features-picker-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  display: grid;
+  max-height: 280px;
+  gap: 4px;
+  overflow: auto;
+  padding: 6px;
+  border: 2px solid var(--gold-dim);
+  border-radius: var(--radius);
+  background: rgba(5, 18, 10, 0.98);
+  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.32);
+}
+
+.features-picker-menu[hidden] {
+  display: none;
+}
+
+.features-picker-option {
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: calc(var(--radius) - 2px);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+
+.features-picker-option:hover,
+.features-picker-option:focus-visible {
+  background: rgba(209, 154, 50, 0.16);
+  outline: 2px solid var(--gold-dim);
+}
+
+.features-picker-empty {
+  padding: 10px;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.features-drop-zone {
+  display: grid;
+  min-height: 62px;
+  place-items: center;
+  border: 2px dashed var(--gold-dim);
+  border-radius: var(--radius);
+  color: var(--muted);
+}
+
+.features-drop-zone.active {
+  border-color: var(--gold);
+  color: var(--text);
+  background: rgba(209, 154, 50, 0.14);
+}
+
+.features-sprite-preview {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+}
+
+.features-preview-panel {
+  display: grid;
+  width: min(100%, 520px);
+  gap: 10px;
+}
+
+.features-preview-panel[hidden] {
+  display: none;
+}
+
+.features-preview-meta {
+  display: grid;
+  gap: 3px;
+}
+
+.features-preview-meta strong {
+  color: var(--text);
+  font-size: 0.92rem;
+}
+
+.features-preview-meta span,
+.features-preview-status {
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.features-preview-panel canvas {
+  display: block;
+  width: min(100%, 384px);
+  height: auto;
+  border: 2px solid var(--gold-dim);
+  border-radius: var(--radius);
+  background-color: rgba(5, 18, 10, 0.92);
+  image-rendering: pixelated;
+}
+
+.features-preview-status {
+  margin: 0;
+}

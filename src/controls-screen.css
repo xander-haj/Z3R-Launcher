@@ -1,0 +1,187 @@
+/* Styles for the Controls view: tab bar, keyboard layout dropdown section, generic
+   editable row layout, and the disabled/greyed visual state for commented rows. */
+
+.controls-shell {
+  display: grid;
+  gap: 22px;
+}
+
+.controls-tab-bar {
+  display: flex;
+  gap: 8px;
+  border-bottom: 2px solid var(--gold-dim);
+  padding-bottom: 8px;
+}
+
+.controls-tab-button {
+  min-height: 40px;
+  padding: 0 18px;
+  border: 2px solid var(--gold-dim);
+  border-radius: var(--radius);
+  background: rgba(5, 18, 10, 0.72);
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.controls-tab-button.active {
+  border-color: var(--gold);
+  color: var(--text);
+  background: rgba(31, 17, 6, 0.85);
+}
+
+/* Tab panels: only the active one renders. Switching is purely visibility-driven. */
+.controls-tab-panel {
+  display: none;
+  gap: 18px;
+}
+
+.controls-tab-panel.active {
+  display: grid;
+}
+
+.controls-empty {
+  margin: 0;
+  color: var(--muted);
+}
+
+/* Small italic muted "by <owner>" line shown directly under the repo title; mirrors the
+   .card-author style on the home page so the heading reads like the card it came from. */
+.controls-author {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.controls-author:empty {
+  display: none;
+}
+
+/* Left-aligned hint shown only on the Gamepad tab so the user knows the bindings are
+   XInput button names rather than gamepad-specific labels for some other API. */
+.controls-tab-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-style: italic;
+}
+
+/* Keyboard layout preset section sits at the top of the KeyMap tab. Now houses only the
+   dropdown — the per-button rebinding lives on the controller overlay below. */
+.controls-keyboard-preset {
+  display: grid;
+  grid-template-columns: minmax(0, 240px);
+  justify-content: start;
+  gap: 18px;
+  padding: 16px;
+  border: 2px solid var(--gold-dim);
+  border-radius: var(--radius);
+  background: rgba(5, 18, 10, 0.62);
+}
+
+/* Section heading shown above the row list, separating it from the controller overlay.
+   Matches the eyebrow / small-caps style used elsewhere for column headings. */
+.controls-additional-heading {
+  margin: 8px 0 0;
+  color: var(--gold-bright);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Wrapper that holds the controller overlay frame; gives it a little breathing room
+   above and below so it doesn't crowd the dropdown or Additional Configs heading. */
+.controller-overlay-slot {
+  display: flex;
+  justify-content: center;
+  padding: 4px 0;
+}
+
+.controls-keyboard-label {
+  display: grid;
+  gap: 6px;
+}
+
+.controls-keyboard-label > span {
+  color: var(--gold-bright);
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.controls-keyboard-select {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 2px solid var(--gold-dim);
+  border-radius: var(--radius);
+  background: rgba(5, 18, 10, 0.78);
+  color: var(--text);
+  font: inherit;
+}
+
+/* List of generic editable rows used by both tabs for non-preset keys. */
+.controls-row-list {
+  display: grid;
+  gap: 8px;
+}
+
+/* Each row pairs an enable-checkbox, a key label, and an editable text input. The
+   checkbox column is fixed width so labels line up across rows. */
+.controls-row {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 220px) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  /*border: 1px solid var(--gold-dim);*/
+  border-radius: var(--radius);
+  background: rgba(7, 19, 13, 0.78);
+}
+
+/* Disabled (commented) rows fade out and visually shrink slightly so the active rows
+   read as the foreground content. */
+.controls-row-disabled {
+  opacity: 0.55;
+  background: rgba(7, 19, 13, 0.45);
+}
+
+.controls-toggle {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.controls-toggle input {
+  margin: 0;
+  accent-color: var(--gold);
+}
+
+.controls-label {
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  overflow-wrap: anywhere;
+}
+
+.controls-value {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 2px solid var(--gold-dim);
+  border-radius: var(--radius);
+  background: rgba(5, 18, 10, 0.78);
+  color: var(--text);
+  font: inherit;
+}
+
+.controls-value:disabled {
+  color: var(--muted);
+}
+
+/* Narrow viewports collapse the row to a single column so labels and inputs stack. */
+@media (max-width: 960px) {
+  .controls-keyboard-preset,
+  .controls-row {
+    grid-template-columns: 1fr;
+  }
+}

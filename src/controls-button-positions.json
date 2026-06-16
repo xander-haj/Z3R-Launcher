@@ -1,0 +1,18 @@
+{
+  "_comment": "Per-button overlay positions for the SNES controller image. Edit top/left values (as percentages of the image dimensions) to nudge any label without touching JS. The array order MUST match zelda3.ini's Controls = ... ordering: Up, Down, Left, Right, Select, Start, A, B, X, Y, L, R. Index N in this list maps to value N in the comma-separated ini string.",
+  "image": "./img/Snes-PNG-Clipart.png",
+  "buttons": [
+    { "id": "up",     "displayName": "Up",     "top": "40%", "left": "23%" },
+    { "id": "down",   "displayName": "Down",   "top": "82%", "left": "24%" },
+    { "id": "left",   "displayName": "Left",   "top": "61%", "left": "11%" },
+    { "id": "right",  "displayName": "Right",  "top": "61%", "left": "36%" },
+    { "id": "select", "displayName": "Select", "top": "81%", "left": "38%" },
+    { "id": "start",  "displayName": "Start",  "top": "78%", "left": "54%" },
+    { "id": "a",      "displayName": "A",      "top": "61%", "left": "87%" },
+    { "id": "b",      "displayName": "B",      "top": "75%", "left": "77%" },
+    { "id": "x",      "displayName": "X",      "top": "47%", "left": "77%" },
+    { "id": "y",      "displayName": "Y",      "top": "61%", "left": "68%" },
+    { "id": "l",      "displayName": "L",      "top": "10%", "left": "20%" },
+    { "id": "r",      "displayName": "R",      "top": "10%", "left": "80%" }
+  ]
+}

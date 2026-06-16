@@ -1,0 +1,260 @@
+/* Scan path manager modal and grouped home-screen sections. Kept separate from
+   styles.css because the global stylesheet is already near the project line cap. */
+.scan-path-dialog {
+  width: min(760px, calc(100vw - 48px));
+  border: 2px solid var(--gold-dim);
+  border-radius: var(--radius);
+  color: var(--text);
+  background: var(--panel);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.62);
+}
+
+.scan-path-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.68);
+}
+
+.repo-update-dialog {
+  width: min(940px, calc(100vw - 48px));
+}
+
+.scan-path-dialog form {
+  display: grid;
+  gap: 20px;
+  padding: 26px;
+}
+
+.repo-tabs {
+  display: flex;
+  gap: 10px;
+}
+
+.repo-tab-button {
+  min-height: 42px;
+  padding: 0 18px;
+  border: 1px solid var(--gold-dim);
+  background: rgba(5, 18, 10, 0.7);
+}
+
+.repo-tab-button.active {
+  border-color: var(--gold);
+  color: var(--gold-bright);
+}
+
+.repo-tab-panel {
+  display: none;
+  gap: 18px;
+}
+
+.repo-tab-panel.active {
+  display: grid;
+}
+
+.scan-path-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.scan-path-field {
+  display: grid;
+  gap: 8px;
+}
+
+.scan-path-field span {
+  color: var(--gold-bright);
+  font-size: 0.84rem;
+  text-transform: uppercase;
+}
+
+.scan-path-field input,
+.scan-path-field select {
+  min-height: 48px;
+  border: 2px solid var(--gold-dim);
+  border-radius: var(--radius);
+  padding: 0 14px;
+  color: var(--text);
+  background: rgba(5, 18, 10, 0.78);
+  font: inherit;
+}
+
+.scan-path-field select {
+  appearance: none;
+  padding-right: 42px;
+  background:
+    linear-gradient(45deg, transparent 50%, var(--gold-bright) 50%)
+      calc(100% - 22px) 52% / 8px 8px no-repeat,
+    linear-gradient(135deg, var(--gold-bright) 50%, transparent 50%)
+      calc(100% - 16px) 52% / 8px 8px no-repeat,
+    rgba(5, 18, 10, 0.78);
+}
+
+.clone-path-row,
+.clone-custom-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 176px;
+  gap: 12px;
+  align-items: end;
+}
+
+.clone-path-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.clone-submit-row {
+  display: grid;
+  grid-template-columns: 176px auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.repo-checkbox-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.repo-checkbox-row input,
+.repo-update-file-row input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--gold);
+}
+
+.repo-warning,
+.repo-warning-list .repo-warning {
+  border: 1px solid rgba(244, 196, 97, 0.58);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  color: var(--gold-bright);
+  background: rgba(44, 28, 8, 0.72);
+  line-height: 1.45;
+}
+
+.repo-warning-list {
+  display: grid;
+  gap: 10px;
+}
+
+.repo-update-file-list {
+  display: grid;
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid rgba(209, 154, 50, 0.38);
+  border-radius: var(--radius);
+  background: rgba(5, 18, 10, 0.55);
+}
+
+.repo-update-file-row {
+  display: grid;
+  grid-template-columns: auto 108px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-height: 46px;
+  padding: 10px 12px;
+}
+
+.repo-update-file-row + .repo-update-file-row {
+  border-top: 1px solid rgba(209, 154, 50, 0.22);
+}
+
+.repo-update-status {
+  color: var(--gold-bright);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+}
+
+.repo-update-path {
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+}
+
+.repo-update-actions {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.scan-path-list {
+  display: grid;
+  gap: 10px;
+}
+
+.scan-path-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  border: 1px solid rgba(209, 154, 50, 0.45);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  background: rgba(10, 31, 18, 0.72);
+}
+
+.scan-path-handle {
+  color: var(--gold-bright);
+  cursor: grab;
+  font-size: 1.35rem;
+}
+
+.scan-path-row.dragging {
+  opacity: 0.55;
+}
+
+.scan-path-name {
+  overflow-wrap: anywhere;
+  color: var(--text);
+}
+
+.scan-path-remove {
+  min-height: 36px;
+  padding: 0 12px;
+}
+
+.scan-path-actions {
+  display: flex;
+  justify-content: end;
+}
+
+.scan-group {
+  display: grid;
+  gap: 18px;
+}
+
+.project-sections {
+  display: grid;
+  gap: 0;
+}
+
+.scan-group + .scan-group {
+  margin-top: 26px;
+  padding-top: 24px;
+  border-top: 2px solid rgba(209, 154, 50, 0.42);
+}
+
+.scan-group-title {
+  color: var(--gold-bright);
+  font-size: 1.08rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 960px) {
+  .scan-path-entry {
+    grid-template-columns: 1fr;
+  }
+
+  .clone-path-row,
+  .clone-custom-row {
+    grid-template-columns: 1fr;
+  }
+
+  .clone-submit-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}

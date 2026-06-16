@@ -1,0 +1,141 @@
+// Owns the cloned-repo update dialog. It fetches a backend preview, renders upstream
+// changed files as checkboxes, and applies only the checked paths.
+import { escapeHtml } from "./shared-utils.js";
+
+export function connectRepoUpdateManager(helpers) {
+  const { elements } = helpers;
+
+  elements.repoUpdateCloseButton.addEventListener("click", () => elements.repoUpdateDialog.close());
+  elements.repoUpdateRefreshButton.addEventListener("click", async () => {
+    if (helpers.state.repoUpdateProject) {
+      await openRepoUpdate(helpers.state.repoUpdateProject, helpers);
+    }
+  });
+  elements.repoUpdateOpenFolderButton.addEventListener("click", async () => {
+    if (!helpers.state.repoUpdateProject) {
+      return;
+    }
+
+    const result = await helpers.call("open_project_folder", {
+      projectPath: helpers.state.repoUpdateProject.path,
+    });
+    helpers.log(result.message);
+  });
+  elements.repoUpdateApplyButton.addEventListener("click", async () => {
+    await applySelectedRepoChanges(helpers);
+  });
+
+  return {
+    async open(candidate) {
+      await openRepoUpdate(candidate, helpers);
+    },
+  };
+}
+
+async function openRepoUpdate(candidate, helpers) {
+  const { elements, state } = helpers;
+  state.repoUpdateProject = candidate;
+  elements.repoUpdateTitle.textContent = `Update ${candidate.name}`;
+  elements.repoUpdatePath.textContent = candidate.path;
+  elements.repoUpdateWarnings.textContent = "";
+  elements.repoUpdateSummary.textContent = "Fetching upstream changes...";
+  elements.repoUpdateFileList.textContent = "";
+  elements.repoUpdateApplyButton.disabled = true;
+
+  if (!elements.repoUpdateDialog.open) {
+    elements.repoUpdateDialog.showModal();
+  }
+
+  try {
+    const preview = await helpers.call("preview_repo_update", {
+      projectPath: candidate.path,
+    });
+    state.repoUpdatePreview = preview;
+    renderRepoPreview(preview, helpers);
+  } catch (error) {
+    elements.repoUpdateSummary.textContent = String(error);
+  }
+}
+
+function renderRepoPreview(preview, helpers) {
+  const { elements } = helpers;
+  elements.repoUpdateWarnings.textContent = "";
+  elements.repoUpdateFileList.textContent = "";
+
+  for (const warning of preview.warnings ?? []) {
+    const item = document.createElement("p");
+    item.className = "repo-warning";
+    item.textContent = warning;
+    elements.repoUpdateWarnings.append(item);
+  }
+
+  if ((preview.changes ?? []).length === 0) {
+    elements.repoUpdateSummary.textContent = preview.upstream
+      ? `No unapplied upstream file changes found on ${preview.upstream}.`
+      : "No unapplied upstream file changes found.";
+    elements.repoUpdateApplyButton.disabled = true;
+    return;
+  }
+
+  const countText = preview.behind_count === 1 ? "1 commit" : `${preview.behind_count} commits`;
+  elements.repoUpdateSummary.textContent = `${countText} behind ${preview.upstream ?? "upstream"}.`;
+
+  for (const change of preview.changes) {
+    const row = document.createElement("label");
+    row.className = "repo-update-file-row";
+    row.innerHTML = `
+      <input type="checkbox" value="${escapeHtml(change.path)}" checked />
+      <span class="repo-update-status">${escapeHtml(change.label)}</span>
+      <span class="repo-update-path">${escapeHtml(change.path)}</span>
+    `;
+
+    if (change.old_path) {
+      row.querySelector(".repo-update-path").textContent = `${change.old_path} -> ${change.path}`;
+    }
+
+    elements.repoUpdateFileList.append(row);
+  }
+
+  elements.repoUpdateApplyButton.disabled = !preview.can_apply;
+}
+
+async function applySelectedRepoChanges(helpers) {
+  const { elements, state } = helpers;
+
+  if (!state.repoUpdateProject || !state.repoUpdatePreview) {
+    return;
+  }
+
+  const selectedFiles = [...elements.repoUpdateFileList.querySelectorAll("input:checked")].map(
+    (input) => input.value,
+  );
+
+  elements.repoUpdateApplyButton.disabled = true;
+
+  try {
+    const result = await helpers.call("apply_repo_update", {
+      projectPath: state.repoUpdateProject.path,
+      selectedFiles,
+    });
+    helpers.log(result.message);
+
+    if (result.stdout) {
+      helpers.log(result.stdout.trim());
+    }
+
+    if (result.stderr) {
+      helpers.log(result.stderr.trim());
+    }
+
+    if (!result.ok) {
+      elements.repoUpdateApplyButton.disabled = false;
+      return;
+    }
+
+    await helpers.refreshScan();
+    await openRepoUpdate(state.repoUpdateProject, helpers);
+  } catch (error) {
+    helpers.log(`Repo update apply failed: ${error}`);
+    elements.repoUpdateApplyButton.disabled = false;
+  }
+}

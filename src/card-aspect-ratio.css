@@ -1,0 +1,120 @@
+/* Styles for the per-card inline Aspect Ratio compound widget (input + arrow + flyout).
+   Lives in its own stylesheet so the project-card grid changes in styles.css stay focused. */
+
+/* The widget wrapper anchors the flyout via position: relative. The card slot it mounts
+   into is one of the two 1fr columns in .card-config-actions. */
+.aspect-widget {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  min-height: 48px;
+  border: 2px solid var(--gold-dim);
+  border-radius: var(--radius);
+  background: rgba(5, 18, 10, 0.72);
+  overflow: visible;
+}
+
+.aspect-widget-disabled {
+  opacity: 0.55;
+}
+
+/* Free-form text input sits flush inside the widget; no border (the wrapper owns it). */
+.aspect-widget .aspect-input {
+  border: 0;
+  padding: 0 12px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  min-width: 0;
+}
+
+.aspect-widget .aspect-input:disabled {
+  color: var(--muted);
+}
+
+/* Arrow toggle button — left border separates it from the input visually without
+   doubling up the rounded corners that the wrapper already provides. */
+.aspect-widget .aspect-toggle {
+  border: 0;
+  border-left: 2px solid var(--gold-dim);
+  padding: 0 12px;
+  background: transparent;
+  color: var(--gold-bright);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.aspect-widget .aspect-toggle:hover {
+  background: rgba(196, 132, 31, 0.22);
+}
+
+/* Flyout panel positioned directly below the widget. Hidden by default; the toggle
+   removes the `hidden` attribute to reveal it. z-index keeps it above adjacent cards. */
+.aspect-flyout {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  display: grid;
+  gap: 10px;
+  min-width: 248px;
+  width: max-content;
+  padding: 14px;
+  border: 2px solid var(--gold-dim);
+  border-radius: var(--radius);
+  background: rgba(7, 19, 13, 0.96);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.45);
+}
+
+.aspect-flyout[hidden] {
+  display: none;
+}
+
+.aspect-flyout-heading {
+  margin: 0;
+  color: var(--gold-bright);
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.aspect-radio-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(104px, 1fr));
+  gap: 6px;
+}
+
+/* Radio and flag rows share the same compact bordered row look so the panel reads
+   as a single coherent control. */
+.aspect-radio-row,
+.aspect-flag-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--gold-dim);
+  border-radius: var(--radius);
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.aspect-radio-row input,
+.aspect-flag-row input {
+  margin: 0;
+  accent-color: var(--gold);
+}
+
+/* Window size text input inherits the widget's outer border style so it looks like
+   it belongs to the same control family. */
+.aspect-window-size {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 2px solid var(--gold-dim);
+  border-radius: var(--radius);
+  background: rgba(5, 18, 10, 0.72);
+  color: var(--text);
+  font: inherit;
+}

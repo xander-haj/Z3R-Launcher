@@ -1,0 +1,11 @@
+{
+  "instructions": [
+    "Step 1: Extract assets from your legally obtained ROM.",
+    "This creates clean editable YAML/config files and generates the vanilla masterlist.",
+    "Step 2: Choose your seed and any exclusions in Configs.",
+    "Step 3: Use Preview randomization when you want to see the result without writing YAML/config changes.",
+    "Step 4: Use Randomize YAML/configs to write the selected randomizer settings into the extracted files.",
+    "Step 5: Build randomized assets so zelda3_assets.dat is rebuilt from the randomized YAML/configs.",
+    "Use Restore vanilla YAML to return randomized YAML/configs to the saved vanilla masterlist before rerolling."
+  ]
+}

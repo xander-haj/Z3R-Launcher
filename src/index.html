@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Z3R Launcher</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./activity-drawer.css" />
+    <link rel="stylesheet" href="./project-cards.css" />
+    <link rel="stylesheet" href="./card-aspect-ratio.css" />
+    <link rel="stylesheet" href="./controls-screen.css" />
+    <link rel="stylesheet" href="./features-screen.css" />
+    <link rel="stylesheet" href="./controller-overlay.css" />
+    <link rel="stylesheet" href="./manual-guides.css" />
+    <link rel="stylesheet" href="./scan-path-manager.css" />
+    <link rel="stylesheet" href="./randomizer-setup.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="topbar" aria-label="Launcher summary">
+        <div class="title-group">
+          <h1>Z3R Launcher</h1>
+        </div>
+        <div class="topbar-actions">
+          <button id="backButton" class="secondary-button hidden" type="button">Back to home</button>
+          <button id="uploadRomButton" class="secondary-button" type="button">Upload SFC</button>
+          <button id="scanPathButton" class="secondary-button" type="button" disabled>Repos</button>
+          <button id="updateCheckButton" class="secondary-button" type="button">Updates</button>
+          <button id="refreshButton" class="icon-button" type="button" title="Refresh scan">↻</button>
+        </div>
+      </section>
+
+      <section class="workspace" aria-label="Launcher workspace">
+        <section id="buildsPanel" class="view-panel active" data-view="builds" aria-label="Detected builds">
+          <div class="section-heading">
+            <div>
+              <h2>Detected Builds</h2>
+              <p id="parentPath" class="hidden"></p>
+            </div>
+          </div>
+          <div id="projectList" class="project-sections"></div>
+        </section>
+
+        <section id="environmentPanel" class="view-panel" data-view="environment" aria-label="Setup and environment">
+          <div class="environment-layout">
+            <section class="setup-path-panel" aria-label="Setup path">
+              <div class="setup-copy">
+                <h2>Setup Path</h2>
+                <ol id="stepList" class="step-list"></ol>
+              </div>
+              <div class="route-stack" aria-label="Setup actions">
+                <button id="venvButton" class="route-button" type="button">Create venv</button>
+                <button id="dependenciesButton" class="route-button" type="button">Install dependencies</button>
+                <button id="extractButton" class="route-button" type="button">Build assets</button>
+                <button id="extractVisualStudioButton" class="route-button hidden" type="button">
+                  Build assets Visual Studio
+                </button>
+                <button id="extractTccButton" class="route-button hidden" type="button">Build assets TCC</button>
+                <div class="environment-play-stack">
+                  <button id="environmentPlayButton" class="route-button" type="button" disabled>Play</button>
+                  <span id="environmentPlayableBadge" class="status ready hidden">Game playable</span>
+                </div>
+              </div>
+            </section>
+
+            <div class="setup-panel">
+              <div class="section-heading">
+                <div>
+                  <h2>Environment</h2>
+                  <p>Checks are read-only unless you press an action button.</p>
+                </div>
+                <button id="checkButton" class="secondary-button" type="button">Run Checks</button>
+              </div>
+              <div id="checkList" class="check-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="randomizerPanel" class="view-panel" data-view="randomizer" aria-label="Randomizer setup">
+          <div class="randomizer-layout">
+            <section class="setup-path-panel randomizer-hero" aria-label="Randomizer setup">
+              <div class="setup-copy">
+                <h2>Randomizer Setup</h2>
+                <div id="randomizerInstructions" class="randomizer-instructions"></div>
+              </div>
+              <div class="route-stack" aria-label="Randomizer actions">
+                <button id="randomizerExtractButton" class="route-button" type="button">Extract assets</button>
+                <button id="randomizerPreviewButton" class="route-button" type="button">Preview randomization</button>
+                <button id="randomizerRunButton" class="route-button" type="button">Randomize YAML/configs</button>
+                <button id="randomizerBuildButton" class="route-button" type="button">Build randomized assets</button>
+              </div>
+            </section>
+
+            <section class="setup-panel randomizer-configs" aria-label="Randomizer configs">
+              <div class="section-heading">
+                <div>
+                  <h2>Configs</h2>
+                  <p id="randomizerStatus">Select a build to inspect randomizer setup.</p>
+                </div>
+                <button id="randomizerRestoreButton" class="secondary-button" type="button">
+                  Restore vanilla YAML
+                </button>
+              </div>
+              <form id="randomizerConfigForm" class="randomizer-form">
+                <label>
+                  <span>Mode</span>
+                  <select id="randomizerMode">
+                    <option value="safe">Safe Mode</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Seed</span>
+                  <input id="randomizerSeed" type="text" placeholder="Leave blank to generate one" autocomplete="off" />
+                </label>
+                <label>
+                  <span>Excluded rooms</span>
+                  <input id="randomizerExcludeRooms" type="text" placeholder="260,261" autocomplete="off" />
+                </label>
+                <label>
+                  <span>Excluded locations</span>
+                  <input
+                    id="randomizerExcludeLocations"
+                    type="text"
+                    placeholder="room:260:chest:0"
+                    autocomplete="off"
+                  />
+                </label>
+                <div class="randomizer-exclusion-grid">
+                  <div class="randomizer-exclusion-column">
+                    <label>
+                      <span>Excluded items</span>
+                      <input id="randomizerExcludeItems" type="text" placeholder="0x32,0x24" autocomplete="off" />
+                    </label>
+                    <div
+                      id="randomizerItemsDropdownPanel"
+                      class="exclusion-dropdown-panel"
+                      aria-label="Excluded items list"
+                    ></div>
+                  </div>
+                  <div class="randomizer-exclusion-column">
+                    <label>
+                      <span>Excluded categories</span>
+                      <input
+                        id="randomizerExcludeCategories"
+                        type="text"
+                        placeholder="big-key,map"
+                        autocomplete="off"
+                      />
+                    </label>
+                    <div
+                      id="randomizerCategoriesDropdownPanel"
+                      class="exclusion-dropdown-panel"
+                      aria-label="Excluded categories list"
+                    ></div>
+                  </div>
+                </div>
+                <div class="randomizer-toggle-grid">
+                  <label class="toggle-row">
+                    <input id="randomizerSmallKeys" type="checkbox" />
+                    <span>Include small keys</span>
+                  </label>
+                  <label class="toggle-row">
+                    <input id="randomizerBigChests" type="checkbox" />
+                    <span>Include big chests</span>
+                  </label>
+                  <label class="toggle-row">
+                    <input id="randomizerNoSpoiler" type="checkbox" />
+                    <span>No spoiler log</span>
+                  </label>
+                </div>
+              </form>
+              <div id="randomizerConfigList" class="randomizer-config-list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="controlsPanel" class="view-panel" data-view="controls" aria-label="Controls editor">
+          <div class="controls-shell">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Controls</p>
+                <h2 id="controlsTitle">Controls</h2>
+                <p id="controlsAuthor" class="controls-author"></p>
+              </div>
+            </div>
+            <div class="controls-tab-bar">
+              <button class="controls-tab-button active" data-controls-tab="keymap" type="button">KeyMap</button>
+              <button class="controls-tab-button" data-controls-tab="gamepad" type="button">Gamepad</button>
+            </div>
+            <div id="controlsKeymapTab" class="controls-tab-panel active"></div>
+            <div id="controlsGamepadTab" class="controls-tab-panel"></div>
+          </div>
+        </section>
+
+        <section id="featuresPanel" class="view-panel" data-view="features" aria-label="Features editor">
+          <div class="features-shell">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Features</p>
+                <h2 id="featuresTitle">Features</h2>
+                <p id="featuresAuthor" class="features-author"></p>
+              </div>
+            </div>
+            <div id="featuresContent" class="features-content"></div>
+          </div>
+        </section>
+
+        <section id="manualGuidePanel" class="view-panel" data-view="manual-guide" aria-label="Manual install guide">
+          <div class="manual-guide-shell">
+            <div class="section-heading">
+              <div>
+                <p id="manualGuideMeta" class="eyebrow">Manual install</p>
+                <h2 id="manualGuideTitle">Manual Install</h2>
+              </div>
+              <button id="guideBackButton" class="secondary-button" type="button">Back to environment</button>
+            </div>
+            <div id="manualGuideContent" class="manual-guide-content"></div>
+          </div>
+        </section>
+
+        <section class="activity-drawer" aria-label="Command output">
+          <button id="activityToggle" class="activity-toggle" type="button" aria-expanded="false">
+            Activity
+          </button>
+          <div id="activityPanel" class="activity-panel">
+            <div class="activity-heading">
+              <p>Command output and setup messages.</p>
+              <button id="clearLogButton" class="secondary-button small" type="button">Clear</button>
+            </div>
+            <pre id="logOutput">Ready.</pre>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <dialog id="scanPathDialog" class="scan-path-dialog" aria-labelledby="scanPathTitle">
+      <form id="scanPathForm" method="dialog">
+        <div class="scan-path-copy">
+          <p class="eyebrow">Repos</p>
+          <h2 id="scanPathTitle">Repo Paths</h2>
+        </div>
+        <div class="repo-tabs" role="tablist" aria-label="Repo manager sections">
+          <button id="scanPathsTabButton" class="repo-tab-button active" type="button">Scan Paths</button>
+          <button id="cloneTabButton" class="repo-tab-button" type="button">Clone</button>
+        </div>
+        <div id="scanPathsTabPanel" class="repo-tab-panel active">
+          <div class="scan-path-entry">
+            <label class="scan-path-field">
+              <span>Folder path</span>
+              <input id="scanPathInput" type="text" autocomplete="off" />
+            </label>
+            <button id="scanPathSelectButton" class="secondary-button" type="button">Select</button>
+            <button id="scanPathAddButton" class="primary-button" type="submit">Add</button>
+          </div>
+          <div id="scanPathList" class="scan-path-list" aria-label="Added scan paths"></div>
+        </div>
+        <div id="cloneTabPanel" class="repo-tab-panel">
+          <p id="clonePathNotice" class="repo-warning hidden"></p>
+          <div class="clone-path-row">
+            <label class="scan-path-field">
+              <span>Clone destination</span>
+              <select id="clonePathSelect"></select>
+            </label>
+            <div class="clone-submit-row">
+              <button id="cloneZ3RModalButton" class="primary-button" type="button">Clone Z3R</button>
+              <label class="repo-checkbox-row">
+                <input id="cloneBetaCheckbox" type="checkbox" />
+                <span>Beta</span>
+              </label>
+            </div>
+          </div>
+          <div class="clone-custom-row">
+            <label class="scan-path-field">
+              <span>GitHub URL</span>
+              <input
+                id="cloneCustomUrl"
+                type="url"
+                placeholder="https://github.com/owner/repo"
+                autocomplete="off"
+              />
+            </label>
+            <button id="cloneCustomModalButton" class="primary-button" type="button">Clone Custom</button>
+          </div>
+        </div>
+        <div class="scan-path-actions">
+          <button id="scanPathCloseButton" class="secondary-button" type="button">Close</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="repoUpdateDialog" class="scan-path-dialog repo-update-dialog" aria-labelledby="repoUpdateTitle">
+      <form id="repoUpdateForm" method="dialog">
+        <div class="scan-path-copy">
+          <p class="eyebrow">Repository</p>
+          <h2 id="repoUpdateTitle">Update Repo</h2>
+          <p id="repoUpdatePath" class="path-line"></p>
+        </div>
+        <div id="repoUpdateWarnings" class="repo-warning-list"></div>
+        <div id="repoUpdateSummary" class="path-line"></div>
+        <div id="repoUpdateFileList" class="repo-update-file-list" aria-label="Repo update files"></div>
+        <div class="scan-path-actions repo-update-actions">
+          <button id="repoUpdateOpenFolderButton" class="secondary-button" type="button">Open Folder</button>
+          <button id="repoUpdateRefreshButton" class="secondary-button" type="button">Refresh</button>
+          <button id="repoUpdateApplyButton" class="primary-button" type="button">Apply Selected</button>
+          <button id="repoUpdateCloseButton" class="secondary-button" type="button">Close</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

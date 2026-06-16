@@ -1,0 +1,58 @@
+id: io.github.xander_haj.Z3RLauncher
+# The launcher creates venvs, installs Python requirements, clones with Git,
+# builds zelda3_assets.dat, and downloads the selected Z3R Linux executable.
+# Use the SDK as the shipped runtime so Steam Deck users get Python, pip, venv,
+# and Git inside the Flatpak sandbox instead of depending on the immutable host OS.
+runtime: org.gnome.Sdk
+runtime-version: '48'
+sdk: org.gnome.Sdk
+command: z3r-launcher
+
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --socket=pulseaudio
+  - --device=dri
+  - --device=input
+  - --share=network
+  - --filesystem=home
+  - --filesystem=/run/media
+  - --talk-name=org.freedesktop.Flatpak
+  - --talk-name=org.freedesktop.portal.Desktop
+  - --env=PATH=/app/bin:/usr/bin:/bin
+  - --env=GTK_USE_PORTAL=1
+  - --env=PKG_CONFIG_PATH=/app/lib/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig
+
+build-options:
+  build-args:
+    - --share=network
+
+modules:
+  - name: z3r-launcher
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 packaging/flatpak/z3r-launcher /app/bin/z3r-launcher
+      - mkdir -p /app/share/z3r-launcher
+      - cp -a z3r_launcher src resources /app/share/z3r-launcher/
+      - mkdir -p /app/share/z3r-launcher/bundled-tools
+      - install -Dm644 bundled-tools/README.md /app/share/z3r-launcher/bundled-tools/README.md
+      - install -Dm644 README.md /app/share/doc/Z3RLauncher/README.md
+      - >-
+        install -Dm644 packaging/flatpak/io.github.xander_haj.Z3RLauncher.desktop
+        /app/share/applications/io.github.xander_haj.Z3RLauncher.desktop
+      - >-
+        install -Dm644 packaging/flatpak/io.github.xander_haj.Z3RLauncher.metainfo.xml
+        /app/share/metainfo/io.github.xander_haj.Z3RLauncher.metainfo.xml
+      - >-
+        install -Dm644 resources/icons/32x32.png
+        /app/share/icons/hicolor/32x32/apps/io.github.xander_haj.Z3RLauncher.png
+      - >-
+        install -Dm644 resources/icons/128x128.png
+        /app/share/icons/hicolor/128x128/apps/io.github.xander_haj.Z3RLauncher.png
+      - >-
+        install -Dm644 resources/icons/128x128@2x.png
+        /app/share/icons/hicolor/256x256/apps/io.github.xander_haj.Z3RLauncher.png
+    sources:
+      - type: dir
+        path: ../..

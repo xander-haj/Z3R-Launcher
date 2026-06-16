@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+
+export Z3R_LAUNCHER_ROOT="/app/share/z3r-launcher"
+export PYTHONPATH="/app/share/z3r-launcher${PYTHONPATH:+:${PYTHONPATH}}"
+exec /usr/bin/python3 -m z3r_launcher "$@"

@@ -1,0 +1,50 @@
+/* Activity drawer styling: the collapsible drawer at the bottom of the shell that
+   holds the command output log. Extracted from styles.css when that file hit the
+   project's 400-line ceiling. The base button look for .activity-toggle still
+   lives in styles.css's shared button rule; only the drawer-specific overrides
+   and the log <pre> container live here. */
+
+.activity-drawer {
+  border-top: 2px solid var(--gold-dim);
+  background: rgba(7, 20, 12, 0.96);
+}
+
+.activity-toggle {
+  width: 100%;
+  min-height: 42px;
+  border: 0;
+  border-radius: var(--radius);
+  color: var(--gold-bright);
+  text-align: left;
+}
+
+/* Disclosure arrows: ▼ when closed, ▲ when open. */
+.activity-toggle::after {
+  content: " \25BC";
+}
+.activity-toggle[aria-expanded="true"]::after {
+  content: " \25B2";
+}
+
+.activity-panel {
+  display: none;
+  padding: 16px 22px 22px;
+}
+.activity-panel.open {
+  display: block;
+}
+
+/* The launcher's only <pre> is #logOutput inside the activity drawer, so this
+   element selector is effectively drawer-scoped in practice. */
+pre {
+  max-height: 220px;
+  min-height: 150px;
+  margin: 14px 0 0;
+  padding: 18px;
+  overflow: auto;
+  color: #a9bea9;
+  white-space: pre-wrap;
+  font-family: var(--font-mono);
+  font-size: 0.98rem;
+  line-height: 1.55;
+}

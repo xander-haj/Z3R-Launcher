@@ -1,0 +1,16 @@
+node_modules/
+.env
+.env.local
+.env.*.local
+dist/
+build/
+.vscode/
+*.log
+.DS_Store
+._*
+__pycache__/
+venv/
+.venv/
+target/
+*.spec.bak
+bundled-tools/windows/
