@@ -11,9 +11,9 @@ import urllib.parse
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
-from .backend import LauncherBackend, LauncherError, open_external_url, static_dir
+from .backend import LauncherBackend, LauncherError, app_data_dir, open_external_url, static_dir
 
 
 HEARTBEAT_TIMEOUT_SECONDS = 45
@@ -28,6 +28,7 @@ class ServerState:
         self.active_commands = 0
         self.lock = threading.Lock()
         self.exiting = False
+        self.exit_callbacks: list[Callable[[], None]] = []
 
     def touch(self) -> None:
         with self.lock:
@@ -51,14 +52,24 @@ class ServerState:
                 and time.monotonic() - self.last_seen > HEARTBEAT_TIMEOUT_SECONDS
             )
 
+    def add_exit_callback(self, callback: Callable[[], None]) -> None:
+        with self.lock:
+            self.exit_callbacks.append(callback)
+
     def schedule_exit(self, delay: float = 1.2) -> None:
         with self.lock:
             if self.exiting:
                 return
             self.exiting = True
+            callbacks = list(self.exit_callbacks)
 
         def close_server() -> None:
             time.sleep(delay)
+            for callback in callbacks:
+                try:
+                    callback()
+                except Exception as error:
+                    print(f"Exit callback failed: {type(error).__name__}: {error}", file=sys.stderr)
             if self.server:
                 self.server.shutdown()
 
@@ -205,6 +216,76 @@ def start_timeout_monitor(state: ServerState) -> None:
     threading.Thread(target=monitor, daemon=True).start()
 
 
+def truthy_env(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def should_use_webview() -> bool:
+    return not truthy_env("Z3R_LAUNCHER_OPEN_BROWSER") and not truthy_env("Z3R_LAUNCHER_NO_WEBVIEW")
+
+
+def should_open_browser() -> bool:
+    return not truthy_env("Z3R_LAUNCHER_NO_BROWSER")
+
+
+def serve_until_shutdown(server: ThreadingHTTPServer) -> None:
+    try:
+        server.serve_forever()
+    finally:
+        server.server_close()
+
+
+def start_server_thread(server: ThreadingHTTPServer) -> threading.Thread:
+    thread = threading.Thread(target=serve_until_shutdown, args=(server,), daemon=False)
+    thread.start()
+    return thread
+
+
+def import_webview() -> Any:
+    try:
+        import webview
+    except ImportError as error:
+        raise LauncherError("pywebview is not installed. Install pywebview or set Z3R_LAUNCHER_OPEN_BROWSER=1.") from error
+    return webview
+
+
+def webview_start_options() -> dict[str, Any]:
+    options: dict[str, Any] = {"debug": truthy_env("Z3R_LAUNCHER_WEBVIEW_DEBUG")}
+    gui = os.environ.get("Z3R_LAUNCHER_WEBVIEW_GUI", "").strip()
+    if gui:
+        options["gui"] = gui
+    return options
+
+
+def open_webview_window(url: str, state: ServerState) -> None:
+    webview = import_webview()
+    storage = app_data_dir() / "webview"
+    storage.mkdir(parents=True, exist_ok=True)
+    window = webview.create_window(
+        "Z3R Launcher",
+        url,
+        width=1280,
+        height=820,
+        min_size=(960, 640),
+    )
+    state.add_exit_callback(window.destroy)
+    webview.start(storage_path=str(storage), private_mode=False, **webview_start_options())
+
+
+def open_browser_or_report(url: str) -> bool:
+    if not should_open_browser():
+        print(f"Z3R Launcher is running at {url}", file=sys.stderr)
+        return False
+
+    try:
+        open_external_url(url)
+    except LauncherError as error:
+        print(f"Could not open browser automatically: {error}", file=sys.stderr)
+
+    print(f"Z3R Launcher is running at {url}", file=sys.stderr)
+    return True
+
+
 def main() -> None:
     token = secrets.token_urlsafe(32)
     state = ServerState(token)
@@ -216,17 +297,23 @@ def main() -> None:
     host, port = server.server_address
     url = f"http://{host}:{port}/?token={urllib.parse.quote(token)}"
 
-    if os.environ.get("Z3R_LAUNCHER_NO_BROWSER") != "1":
+    if should_use_webview():
+        server_thread = start_server_thread(server)
         try:
-            open_external_url(url)
-        except LauncherError as error:
-            print(f"Could not open browser automatically: {error}", file=sys.stderr)
+            open_webview_window(url, state)
+        except Exception as error:
+            print(f"Could not open native app window: {type(error).__name__}: {error}", file=sys.stderr)
+            fallback_opened = open_browser_or_report(url)
+            if not fallback_opened:
+                state.schedule_exit(delay=0)
+            server_thread.join()
+            return
+        state.schedule_exit(delay=0)
+        server_thread.join()
+        return
 
-    print(f"Z3R Launcher is running at {url}", file=sys.stderr)
-    try:
-        server.serve_forever()
-    finally:
-        server.server_close()
+    open_browser_or_report(url)
+    serve_until_shutdown(server)
 
 
 if __name__ == "__main__":

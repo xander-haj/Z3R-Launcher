@@ -3,9 +3,11 @@ from pathlib import Path
 import sys
 
 import certifi
+from PyInstaller.utils.hooks import collect_submodules
 
 
 root = Path.cwd()
+hiddenimports = ["tkinter", "tkinter.filedialog", "certifi"] + collect_submodules("webview")
 datas = [
     (str(root / "src"), "src"),
     (str(root / "resources"), "resources"),
@@ -23,7 +25,7 @@ a = Analysis(
     pathex=[str(root)],
     binaries=[],
     datas=datas,
-    hiddenimports=["tkinter", "tkinter.filedialog", "certifi"],
+    hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

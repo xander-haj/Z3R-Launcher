@@ -1,0 +1,3 @@
+certifi
+pywebview[gtk]; sys_platform == "linux"
+pywebview; sys_platform != "linux"

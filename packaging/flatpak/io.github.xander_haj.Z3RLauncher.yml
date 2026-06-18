@@ -32,6 +32,7 @@ modules:
   - name: z3r-launcher
     buildsystem: simple
     build-commands:
+      - python3 -m pip install --prefix=/app --no-cache-dir "pywebview[gtk]"
       - install -Dm755 packaging/flatpak/z3r-launcher /app/bin/z3r-launcher
       - mkdir -p /app/share/z3r-launcher
       - cp -a z3r_launcher src resources /app/share/z3r-launcher/
