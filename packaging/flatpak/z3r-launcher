@@ -2,5 +2,8 @@
 set -eu
 
 export Z3R_LAUNCHER_ROOT="/app/share/z3r-launcher"
+export Z3R_LAUNCHER_REQUIRE_WEBVIEW=1
+export Z3R_LAUNCHER_WEBVIEW_GUI=gtk
+export PYWEBVIEW_GUI=gtk
 export PYTHONPATH="/app/share/z3r-launcher${PYTHONPATH:+:${PYTHONPATH}}"
 exec /usr/bin/python3 -m z3r_launcher "$@"

@@ -44,33 +44,36 @@ function Save-ToolArchive {
   $partial = "$target.download"
   $curl = Get-Command curl.exe -ErrorAction SilentlyContinue
 
-  if ($null -eq $curl) {
-    throw "curl.exe was not found on the Windows runner."
-  }
-
   if (Test-Path $partial) {
     Remove-Item $partial -Force
   }
 
   Write-Host "Downloading $FileName"
 
-  & $curl.Source `
-    --fail `
-    --location `
-    --show-error `
-    --silent `
-    --connect-timeout 30 `
-    --max-time $DownloadTimeoutSeconds `
-    --retry $DownloadRetries `
-    --retry-delay 5 `
-    --retry-max-time $DownloadTimeoutSeconds `
-    --speed-limit 1024 `
-    --speed-time 60 `
-    --output $partial `
-    $Url
+  if ($null -eq $curl) {
+    Write-Warning "curl.exe was not found on the Windows runner. Trying PowerShell."
+    Save-ToolArchiveWithPowerShell -Url $Url -Path $partial -FileName $FileName
+  } else {
+    & $curl.Source `
+      --fail `
+      --location `
+      --show-error `
+      --silent `
+      --connect-timeout 30 `
+      --max-time $DownloadTimeoutSeconds `
+      --retry $DownloadRetries `
+      --retry-delay 5 `
+      --retry-max-time $DownloadTimeoutSeconds `
+      --speed-limit 1024 `
+      --speed-time 60 `
+      --output $partial `
+      $Url
 
-  if ($LASTEXITCODE -ne 0) {
-    throw "Failed to download $FileName from $Url. curl.exe exited with code $LASTEXITCODE."
+    if ($LASTEXITCODE -ne 0) {
+      $curlExitCode = $LASTEXITCODE
+      Write-Warning "curl.exe failed to download $FileName with exit code $curlExitCode. Trying PowerShell."
+      Save-ToolArchiveWithPowerShell -Url $Url -Path $partial -FileName $FileName
+    }
   }
 
   if (!(Test-Path $partial)) {
@@ -85,6 +88,71 @@ function Save-ToolArchive {
 
   Move-Item -Path $partial -Destination $target -Force
   return $target
+}
+
+# Uses PowerShell's web stack as a fallback when curl.exe hits transient runner TLS
+# failures. GitHub-hosted Windows images occasionally fail NuGet downloads through
+# curl/schannel before Invoke-WebRequest can still complete the same HTTPS request.
+function Save-ToolArchiveWithPowerShell {
+  param(
+    [string]$Url,
+    [string]$Path,
+    [string]$FileName
+  )
+
+  if (Test-Path $Path) {
+    Remove-Item $Path -Force
+  }
+
+  for ($attempt = 1; $attempt -le $DownloadRetries; $attempt += 1) {
+    try {
+      Invoke-WebRequest `
+        -Uri $Url `
+        -OutFile $Path `
+        -MaximumRedirection 10 `
+        -TimeoutSec $DownloadTimeoutSeconds `
+        -UseBasicParsing
+      return
+    } catch {
+      if (Test-Path $Path) {
+        Remove-Item $Path -Force
+      }
+
+      if ($attempt -eq $DownloadRetries) {
+        throw "Failed to download $FileName from $Url after PowerShell fallback retries. $($_.Exception.Message)"
+      }
+
+      Start-Sleep -Seconds 5
+    }
+  }
+}
+
+# Copies the Python interpreter already installed by actions/setup-python when the
+# NuGet package download is unavailable. The copied layout mirrors python.nupkg's
+# tools/python.exe path so the launcher backend can find the bundled interpreter.
+function Install-CurrentPythonFallback {
+  param(
+    [string]$Destination
+  )
+
+  $pythonCommand = Get-Command python.exe -ErrorAction SilentlyContinue
+
+  if ($null -eq $pythonCommand) {
+    throw "Python package download failed and python.exe is not available for fallback bundling."
+  }
+
+  $pythonRoot = $env:pythonLocation
+
+  if ([string]::IsNullOrWhiteSpace($pythonRoot)) {
+    $pythonRoot = Split-Path -Parent $pythonCommand.Source
+  }
+
+  if (!(Test-Path (Join-Path $pythonRoot "python.exe"))) {
+    throw "Python fallback root does not contain python.exe: $pythonRoot"
+  }
+
+  New-Item -ItemType Directory -Force -Path $Destination | Out-Null
+  Copy-Item -Path (Join-Path $pythonRoot "*") -Destination $Destination -Recurse -Force
 }
 
 # Expands a normal zip/nupkg archive into the target folder.
@@ -139,12 +207,23 @@ function Copy-NormalizedContents {
 }
 
 $gitArchive = Save-ToolArchive -Url $GitUrl -FileName "PortableGit.7z.exe"
-$pythonArchive = Save-ToolArchive -Url $PythonUrl -FileName "python.nupkg"
+$pythonArchive = $null
+try {
+  $pythonArchive = Save-ToolArchive -Url $PythonUrl -FileName "python.nupkg"
+} catch {
+  Write-Warning $_.Exception.Message
+  Write-Warning "Falling back to the Python installed by actions/setup-python."
+}
 $sdlArchive = Save-ToolArchive -Url $Sdl2Url -FileName "SDL2-devel-VC.zip"
 $tccArchive = Save-ToolArchive -Url $TccUrl -FileName "tcc-win64.zip"
 
 Expand-SevenZipArchive -Archive $gitArchive -Destination (Join-Path $toolRoot "git")
-Expand-ZipArchive -Archive $pythonArchive -Destination (Join-Path $toolRoot "python")
+
+if ($null -ne $pythonArchive) {
+  Expand-ZipArchive -Archive $pythonArchive -Destination (Join-Path $toolRoot "python")
+} else {
+  Install-CurrentPythonFallback -Destination (Join-Path $toolRoot "python/tools")
+}
 
 $sdlExtract = Join-Path $downloadRoot "sdl2-expanded"
 $tccExtract = Join-Path $downloadRoot "tcc-expanded"

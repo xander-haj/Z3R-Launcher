@@ -12,8 +12,9 @@ specifically want to build the launcher from source.
 The launcher is now Python-only: a plain HTML/CSS/JavaScript frontend in `src/` and a
 Python backend in `z3r_launcher/`. The Python process serves the UI on localhost, opens it
 in a native pywebview app window, and exposes the same command surface the frontend uses
-for scanning, setup actions, INI editing, updates, and launching games. If pywebview is
-unavailable, the launcher falls back to the user's normal browser.
+for scanning, setup actions, INI editing, updates, and launching games. macOS, Windows,
+and Flatpak packages use the native pywebview window. The AppImage opens the same local
+UI in the user's default browser.
 
 Main features:
 
@@ -49,8 +50,8 @@ python3 -m pip install -r requirements.txt
 python3 -m z3r_launcher
 ```
 
-The command starts a localhost server and opens the launcher in a standalone app window.
-Set `Z3R_LAUNCHER_OPEN_BROWSER=1` to use the old default-browser window for debugging.
+The command starts a localhost server behind a standalone pywebview app window. Browser
+fallback is disabled in source and packaged runs.
 
 ## Build Packages
 
@@ -62,9 +63,14 @@ for AppImage, macOS, and Windows; Flatpak uses the GNOME SDK runtime Python.
 The release workflow builds the AppImage on Ubuntu with PyInstaller and AppImageKit:
 
 ```sh
-python3 -m pip install --upgrade pyinstaller certifi "pywebview[qt]"
-python3 -m PyInstaller --clean packaging/pyinstaller/z3r-launcher.spec
+sudo apt install curl file libfuse2 python3-venv wget xz-utils
+/usr/bin/python3 -m venv --system-site-packages .packaging-venv
+.packaging-venv/bin/python -m pip install --upgrade pyinstaller certifi
+.packaging-venv/bin/python -m PyInstaller --clean packaging/pyinstaller/z3r-launcher.spec
 ```
+
+The Linux AppImage job intentionally skips `actions/setup-python` and uses
+`/usr/bin/python3` for the packaging venv.
 
 The workflow then assembles an AppDir with:
 
@@ -73,7 +79,9 @@ The workflow then assembles an AppDir with:
 - `packaging/appimage/io.github.xander_haj.Z3RLauncher.desktop`
 - `resources/icons/128x128.png`
 
-The workflow emits `Z3R-Launcher-linux-x64.AppImage`.
+The workflow emits `Z3R-Launcher-linux-x64.AppImage`. The AppImage starts the Python
+launcher server and opens the token-protected local UI in the user's default browser.
+Linux users who want a standalone native window should use the Flatpak package instead.
 
 ### macOS DMGs
 
@@ -82,16 +90,18 @@ macOS releases are built natively on GitHub's Intel and Apple Silicon macOS runn
 - Intel: `Z3R-Launcher-macos-intel.dmg`
 - Apple Silicon: `Z3R-Launcher-macos-apple-silicon.dmg`
 
-The PyInstaller spec creates `dist/Z3R Launcher.app`. The release workflow copies that app bundle
-into a DMG staging folder with an `/Applications` shortcut, then creates the compressed DMG with
-`hdiutil`.
+The PyInstaller spec creates `dist/Z3R Launcher.app`. The release workflow creates a
+temporary read/write HFS+ image, mounts it at a unique runner temp path, copies the app
+and `/Applications` shortcut into that mounted image, detaches it, then converts it to a
+compressed UDZO DMG with `hdiutil`.
 
 ### Flatpak
 
 The Flatpak manifest is `packaging/flatpak/io.github.xander_haj.Z3RLauncher.yml`.
 It installs the Python package, static UI, resources, and bundled-tool metadata into
-`/app/share/z3r-launcher`, installs the GTK-backed pywebview dependency into `/app`,
-then runs `/usr/bin/python3 -m z3r_launcher`.
+`/app/share/z3r-launcher`, installs pywebview into `/app`, and uses the GNOME SDK's
+system PyGObject/WebKitGTK stack instead of replacing it with pip-managed PyGObject.
+It then runs `/usr/bin/python3 -m z3r_launcher` with the GTK webview backend required.
 
 The Flatpak uses the GNOME SDK runtime so Steam Deck and other Flatpak users can run the
 launcher-managed Git, Python, venv, and pip path inside the sandbox instead of installing
@@ -117,7 +127,7 @@ installing those dependencies separately.
 Build the executable and setup package:
 
 ```powershell
-python -m pip install --upgrade pyinstaller certifi pywebview
+python -m pip install --upgrade pyinstaller certifi "pywebview==6.2.1"
 python -m PyInstaller --clean packaging/pyinstaller/z3r-launcher.spec
 copy dist\z3r-launcher.exe dist\Z3R-Launcher-windows-x64.exe
 $repoRoot = (Get-Location).Path
@@ -161,7 +171,10 @@ Windows:
 - Windows Terminal or another terminal app for running setup commands
 
 Prebuilt Windows releases include bundled portable Git, Python, TCC, and SDL2 for the
-launcher-managed setup path. MSBuild is still required if you choose the Visual Studio build route.
+launcher-managed setup path. Release builds download the pinned Python package first;
+if NuGet has a transient runner TLS failure, the toolkit script falls back to the
+Python installed by `actions/setup-python`. MSBuild is still required if you choose
+the Visual Studio build route.
 
 ## Launcher Updates
 

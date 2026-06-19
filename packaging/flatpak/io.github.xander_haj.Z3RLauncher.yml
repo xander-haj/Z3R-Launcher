@@ -4,7 +4,7 @@ id: io.github.xander_haj.Z3RLauncher
 # Use the SDK as the shipped runtime so Steam Deck users get Python, pip, venv,
 # and Git inside the Flatpak sandbox instead of depending on the immutable host OS.
 runtime: org.gnome.Sdk
-runtime-version: '48'
+runtime-version: '50'
 sdk: org.gnome.Sdk
 command: z3r-launcher
 
@@ -32,7 +32,7 @@ modules:
   - name: z3r-launcher
     buildsystem: simple
     build-commands:
-      - python3 -m pip install --prefix=/app --no-cache-dir "pywebview[gtk]"
+      - python3 -m pip install --prefix=/app --no-cache-dir "pywebview==6.2.1"
       - install -Dm755 packaging/flatpak/z3r-launcher /app/bin/z3r-launcher
       - mkdir -p /app/share/z3r-launcher
       - cp -a z3r_launcher src resources /app/share/z3r-launcher/

@@ -65,10 +65,47 @@
   margin-top: 8px;
 }
 
-.card-config-button-row {
+.card-category-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
   gap: 12px;
+}
+
+.card-category-menu-wrap {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.card-category-button[aria-expanded="true"] {
+  border-color: var(--gold);
+  color: var(--gold-bright);
+  box-shadow: 0 0 18px rgba(209, 154, 50, 0.22);
+}
+
+.card-action-menu {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  padding: 10px;
+  border: 2px solid var(--gold-dim);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(rgba(244, 196, 97, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(244, 196, 97, 0.04) 1px, transparent 1px),
+    #07130d;
+  background-size: 12px 12px, 12px 12px, auto;
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.5);
+}
+
+.card-action-menu[hidden] {
+  display: none;
+}
+
+.card-action-menu .secondary-button {
+  min-height: 42px;
 }
 
 .card-setup-actions {

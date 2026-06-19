@@ -52,6 +52,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Python
+        if: matrix.family != 'linux'
         uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -62,7 +63,11 @@ jobs:
           RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
           RELEASE_SHA: ${{ github.sha }}
         run: |
-          python - <<'PY'
+          metadata_python="python"
+          if [ "${{ matrix.family }}" = "linux" ]; then
+            metadata_python="/usr/bin/python3"
+          fi
+          "${metadata_python}" - <<'PY'
           import json
           import os
           from pathlib import Path
@@ -82,6 +87,7 @@ jobs:
             curl \
             file \
             libfuse2 \
+            python3-venv \
             wget \
             xz-utils
 
@@ -101,17 +107,27 @@ jobs:
         shell: pwsh
         run: ./scripts/verify-windows-toolkit.ps1
 
+      - name: Install Linux PyInstaller packaging dependencies
+        if: matrix.family == 'linux'
+        shell: bash
+        run: |
+          /usr/bin/python3 -m venv --system-site-packages .packaging-venv
+          .packaging-venv/bin/python -m pip install --upgrade pip pyinstaller certifi
+
       - name: Install PyInstaller packaging dependencies
+        if: matrix.family != 'linux'
         shell: bash
         run: |
           python -m pip install --upgrade pip pyinstaller certifi
-          if [ "${{ matrix.family }}" = "linux" ]; then
-            python -m pip install --upgrade "pywebview[qt]"
-          else
-            python -m pip install --upgrade pywebview
-          fi
+          python -m pip install --upgrade "pywebview==6.2.1"
+
+      - name: Build Linux Python executable
+        if: matrix.family == 'linux'
+        shell: bash
+        run: .packaging-venv/bin/python -m PyInstaller --clean packaging/pyinstaller/z3r-launcher.spec
 
       - name: Build Python executable
+        if: matrix.family != 'linux'
         shell: bash
         run: python -m PyInstaller --clean packaging/pyinstaller/z3r-launcher.spec
 
@@ -165,7 +181,17 @@ jobs:
           DMG_NAME: ${{ matrix.dmg_name }}
         run: |
           app_path="dist/Z3R Launcher.app"
-          dmg_root="dmg-root"
+          dmg_work="${RUNNER_TEMP:-/tmp}/z3r-launcher-dmg-${{ matrix.artifact_name }}"
+          mount_dir="${dmg_work}/mount"
+          staging_dir="${dmg_work}/staging"
+          rw_dmg="${dmg_work}/${DMG_NAME%.dmg}.rw.dmg"
+          final_dmg="dist/${DMG_NAME}"
+
+          cleanup() {
+            hdiutil detach "${mount_dir}" -force >/dev/null 2>&1 || true
+            rm -rf "${dmg_work}"
+          }
+          trap cleanup EXIT
 
           if [ ! -d "${app_path}" ]; then
             echo "PyInstaller did not create ${app_path}."
@@ -173,16 +199,26 @@ jobs:
             exit 1
           fi
 
-          rm -rf "${dmg_root}"
-          mkdir -p "${dmg_root}"
-          ditto "${app_path}" "${dmg_root}/Z3R Launcher.app"
-          ln -s /Applications "${dmg_root}/Applications"
+          cleanup
+          rm -f "${final_dmg}"
+          mkdir -p "${mount_dir}" "${staging_dir}" dist
+          ditto "${app_path}" "${staging_dir}/Z3R Launcher.app"
+          ln -s /Applications "${staging_dir}/Applications"
+          size_mb=$(du -sm "${staging_dir}" | awk '{ print $1 + 128 }')
+
           hdiutil create \
             -volname "Z3R Launcher" \
-            -srcfolder "${dmg_root}" \
-            -ov \
-            -format UDZO \
-            "dist/${DMG_NAME}"
+            -fs HFS+ \
+            -size "${size_mb}m" \
+            -type UDIF \
+            "${rw_dmg}"
+          hdiutil attach "${rw_dmg}" -mountpoint "${mount_dir}" -nobrowse -noautoopen
+          ditto "${staging_dir}/Z3R Launcher.app" "${mount_dir}/Z3R Launcher.app"
+          ln -s /Applications "${mount_dir}/Applications"
+          sync
+          hdiutil detach "${mount_dir}" || hdiutil detach "${mount_dir}" -force
+          hdiutil convert "${rw_dmg}" -format UDZO -ov -o "${final_dmg}"
+          hdiutil verify "${final_dmg}"
 
       - name: Build Windows setup exe
         if: matrix.family == 'windows'
@@ -248,7 +284,7 @@ jobs:
     permissions:
       contents: write
     container:
-      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-48
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-50
       options: --privileged
     steps:
       - name: Checkout repository

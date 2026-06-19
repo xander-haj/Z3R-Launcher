@@ -10,10 +10,12 @@
     <link rel="stylesheet" href="./card-aspect-ratio.css" />
     <link rel="stylesheet" href="./controls-screen.css" />
     <link rel="stylesheet" href="./features-screen.css" />
+    <link rel="stylesheet" href="./link-sprite-editor.css" />
     <link rel="stylesheet" href="./controller-overlay.css" />
     <link rel="stylesheet" href="./manual-guides.css" />
     <link rel="stylesheet" href="./scan-path-manager.css" />
     <link rel="stylesheet" href="./randomizer-setup.css" />
+    <link rel="stylesheet" href="./dev-settings.css" />
   </head>
   <body>
     <main class="shell">
@@ -205,6 +207,19 @@
           </div>
         </section>
 
+        <section id="linkSpritePanel" class="view-panel" data-view="link-sprite" aria-label="Link sprite editor">
+          <div class="link-sprite-shell">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Link Sprite</p>
+                <h2 id="linkSpriteTitle">Link Sprite</h2>
+                <p id="linkSpriteAuthor" class="link-sprite-author"></p>
+              </div>
+            </div>
+            <div id="linkSpriteContent" class="link-sprite-content"></div>
+          </div>
+        </section>
+
         <section id="manualGuidePanel" class="view-panel" data-view="manual-guide" aria-label="Manual install guide">
           <div class="manual-guide-shell">
             <div class="section-heading">
@@ -303,6 +318,44 @@
           <button id="repoUpdateRefreshButton" class="secondary-button" type="button">Refresh</button>
           <button id="repoUpdateApplyButton" class="primary-button" type="button">Apply Selected</button>
           <button id="repoUpdateCloseButton" class="secondary-button" type="button">Close</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="devUnlockDialog" class="scan-path-dialog dev-unlock-dialog">
+      <form class="dev-unlock-form" method="dialog">
+        <input id="devUnlockInput" class="dev-unlock-input" type="text" autocomplete="off" readonly />
+      </form>
+    </dialog>
+
+    <dialog id="devSettingsDialog" class="scan-path-dialog dev-settings-dialog" aria-labelledby="devSettingsTitle">
+      <form id="devSettingsForm" method="dialog">
+        <div class="scan-path-copy">
+          <p class="eyebrow">Local</p>
+          <h2 id="devSettingsTitle">Dev Settings</h2>
+        </div>
+        <div class="dev-settings-grid">
+          <label class="scan-path-field">
+            <span>Update check path</span>
+            <input
+              id="devUpdatePathInput"
+              type="url"
+              placeholder="https://github.com/owner/repo"
+              autocomplete="off"
+            />
+          </label>
+          <div class="dev-settings-paths">
+            <strong>Effective</strong>
+            <p id="devEffectiveUpdatePath" class="path-line"></p>
+            <strong>Default</strong>
+            <p id="devDefaultUpdatePath" class="path-line"></p>
+          </div>
+          <p id="devSettingsStatus" class="path-line dev-settings-status"></p>
+        </div>
+        <div class="scan-path-actions dev-settings-actions">
+          <button id="devSettingsResetButton" class="secondary-button" type="button">Reset</button>
+          <button id="devSettingsSaveButton" class="primary-button" type="button">Save</button>
+          <button id="devSettingsCloseButton" class="secondary-button" type="button">Close</button>
         </div>
       </form>
     </dialog>

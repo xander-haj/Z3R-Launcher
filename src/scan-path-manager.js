@@ -1,5 +1,5 @@
-// This module owns the Repos modal, including scan path persistence, clone path
-// persistence, clone actions, and drag/drop ordering.
+// This module owns the Repos modal, including durable scan path persistence,
+// clone path persistence, clone actions, and drag/drop ordering.
 const SCAN_PATHS_STORAGE_KEY = "z3r-launcher-scan-paths";
 const CLONE_PATH_STORAGE_KEY = "z3r-launcher-clone-path";
 
@@ -16,6 +16,44 @@ export function loadStoredScanPaths() {
 // Loads the optional clone destination override. Null means the backend should use the default root.
 export function loadStoredClonePath() {
   return localStorage.getItem(CLONE_PATH_STORAGE_KEY);
+}
+
+// Loads backend-persisted repo settings and migrates old localStorage paths once.
+export async function loadSavedRepoSettings(helpers) {
+  let snapshot;
+  try {
+    snapshot = await helpers.call("read_repo_settings");
+  } catch (error) {
+    helpers.log(`Using unsaved repo paths for this window: ${error}`);
+    return;
+  }
+
+  const backendScanPaths = normalizeScanPaths(snapshot.scan_paths);
+  const legacyScanPaths = loadStoredScanPaths();
+  const useLegacyPaths = backendScanPaths.length === 0 && legacyScanPaths.length > 0;
+  const backendClonePath = typeof snapshot.clone_path === "string" ? snapshot.clone_path : null;
+  const legacyClonePath = loadStoredClonePath();
+
+  helpers.state.scanPaths = useLegacyPaths ? legacyScanPaths : backendScanPaths;
+  helpers.state.clonePath = backendClonePath;
+
+  if (useLegacyPaths && legacyScanPaths.includes(legacyClonePath)) {
+    helpers.state.clonePath = legacyClonePath;
+  }
+
+  if (
+    helpers.state.runtimeInfo?.default_clone_requires_scan_path
+    && !helpers.state.clonePath
+    && helpers.state.scanPaths.length > 0
+  ) {
+    helpers.state.clonePath = helpers.state.scanPaths[0];
+  }
+
+  if (useLegacyPaths || helpers.state.clonePath !== backendClonePath) {
+    await saveRepoSettings(helpers);
+  }
+
+  clearLegacyRepoSettings();
 }
 
 // Wires modal controls to the shared app state and scan refresh callback.
@@ -37,7 +75,9 @@ export function connectScanPathManager(helpers) {
     event.preventDefault();
     await addScanPath(elements.scanPathInput.value, helpers);
   });
-  elements.clonePathSelect.addEventListener("change", () => saveClonePathFromSelect(helpers));
+  elements.clonePathSelect.addEventListener("change", async () => {
+    await saveClonePathFromSelect(helpers);
+  });
   elements.cloneBetaCheckbox.addEventListener("change", () => updateCloneButtonState(helpers));
   elements.cloneZ3RModalButton.addEventListener("click", async () => {
     await runClone("clone_project", helpers);
@@ -127,9 +167,9 @@ function buildScanPathRow(path, index, helpers) {
   });
   row.querySelector(".scan-path-remove").addEventListener("click", async () => {
     state.scanPaths.splice(index, 1);
-    saveScanPaths(state);
     renderScanPathManager(helpers);
     renderClonePathOptions(helpers);
+    await saveRepoSettings(helpers);
     await refreshScan();
   });
 
@@ -148,12 +188,12 @@ async function addScanPath(path, helpers) {
 
   if (!state.scanPaths.includes(trimmed)) {
     state.scanPaths.push(trimmed);
-    saveScanPaths(state);
   }
 
   elements.scanPathInput.value = "";
   renderScanPathManager(helpers);
   renderClonePathOptions(helpers);
+  await saveRepoSettings(helpers);
   await refreshScan();
 }
 
@@ -167,28 +207,65 @@ async function moveScanPath(fromIndex, toIndex, helpers) {
 
   const [path] = state.scanPaths.splice(fromIndex, 1);
   state.scanPaths.splice(toIndex, 0, path);
-  saveScanPaths(state);
   renderScanPathManager(helpers);
   renderClonePathOptions(helpers);
+  await saveRepoSettings(helpers);
   await refreshScan();
 }
 
-// Persists only user-added paths because the launcher default is always active.
-function saveScanPaths(state) {
-  localStorage.setItem(SCAN_PATHS_STORAGE_KEY, JSON.stringify(state.scanPaths));
+// Saves the live repo settings to the backend app-data file and mirrors normalization.
+async function saveRepoSettings(helpers) {
+  const snapshot = await helpers.call("save_repo_settings", {
+    scanPaths: helpers.state.scanPaths,
+    clonePath: helpers.state.clonePath,
+  });
+  helpers.state.scanPaths = normalizeScanPaths(snapshot.scan_paths);
+  helpers.state.clonePath = typeof snapshot.clone_path === "string" ? snapshot.clone_path : null;
+}
+
+// Normalizes path arrays received from storage without inventing platform rules.
+function normalizeScanPaths(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const seen = new Set();
+  const paths = [];
+  for (const item of value) {
+    if (typeof item !== "string") {
+      continue;
+    }
+    const path = item.trim();
+    if (!path || seen.has(path)) {
+      continue;
+    }
+    seen.add(path);
+    paths.push(path);
+  }
+  return paths;
+}
+
+// Removes legacy WebView storage after a successful backend migration.
+function clearLegacyRepoSettings() {
+  localStorage.removeItem(SCAN_PATHS_STORAGE_KEY);
+  localStorage.removeItem(CLONE_PATH_STORAGE_KEY);
 }
 
 // Populates clone destinations from the current scan roots: default plus added paths.
 function renderClonePathOptions(helpers) {
   const { elements, state } = helpers;
   const requiresManualPath = state.runtimeInfo?.default_clone_requires_scan_path ?? false;
-  const options = [{ label: "Default", value: "", disabled: requiresManualPath }, ...state.scanPaths.map(pathToOption)];
-  const validCloneValues = new Set(options.filter((option) => !option.disabled).map((option) => option.value));
+  const options = [
+    { label: "Default", value: "", disabled: requiresManualPath },
+    ...state.scanPaths.map(pathToOption),
+  ];
+  const validCloneValues = new Set(
+    options.filter((option) => !option.disabled).map((option) => option.value),
+  );
   elements.clonePathSelect.textContent = "";
 
   if (!validCloneValues.has(state.clonePath ?? "")) {
     state.clonePath = null;
-    localStorage.removeItem(CLONE_PATH_STORAGE_KEY);
   }
 
   for (const option of options) {
@@ -203,7 +280,6 @@ function renderClonePathOptions(helpers) {
 
   if (requiresManualPath && !state.clonePath && state.scanPaths.length > 0) {
     state.clonePath = state.scanPaths[0];
-    localStorage.setItem(CLONE_PATH_STORAGE_KEY, state.clonePath);
     elements.clonePathSelect.value = state.clonePath;
   }
 
@@ -216,16 +292,15 @@ function renderClonePathOptions(helpers) {
 }
 
 // Saves the clone path override; the Default option returns cloning to the default root.
-function saveClonePathFromSelect(helpers) {
+async function saveClonePathFromSelect(helpers) {
   const { elements, log, state } = helpers;
   const clonePath = elements.clonePathSelect.value;
   state.clonePath = clonePath || null;
+  await saveRepoSettings(helpers);
 
   if (state.clonePath) {
-    localStorage.setItem(CLONE_PATH_STORAGE_KEY, state.clonePath);
     log(`Clone path set to ${state.clonePath}`);
   } else {
-    localStorage.removeItem(CLONE_PATH_STORAGE_KEY);
     log("Clone path reset to the launcher default.");
   }
 
@@ -243,7 +318,7 @@ async function runClone(command, helpers, extraPayload = {}) {
     return;
   }
 
-  saveClonePathFromSelect(helpers);
+  await saveClonePathFromSelect(helpers);
   elements.cloneZ3RModalButton.disabled = true;
   elements.cloneCustomModalButton.disabled = true;
 

@@ -8,11 +8,14 @@ import { connectProjectCards } from "./project-cards.js";
 import { connectEnvironmentScreen } from "./environment-screen.js";
 import { connectControlsScreen } from "./controls-screen.js";
 import { connectFeaturesScreen } from "./features-screen.js";
+import { connectLinkSpriteEditor } from "./link-sprite-editor.js";
 import { checksReady, updateEnvironmentActions } from "./environment-actions.js";
 import { connectRepoUpdateManager } from "./repo-update-manager.js";
 import { connectLauncherUpdateChecker } from "./launcher-update-checker.js";
+import { connectDevSettings } from "./dev-settings.js";
 import {
   connectScanPathManager,
+  loadSavedRepoSettings,
   loadStoredClonePath,
   loadStoredScanPaths,
 } from "./scan-path-manager.js";
@@ -85,6 +88,17 @@ const elements = {
   repoUpdateRefreshButton: document.querySelector("#repoUpdateRefreshButton"),
   repoUpdateApplyButton: document.querySelector("#repoUpdateApplyButton"),
   repoUpdateCloseButton: document.querySelector("#repoUpdateCloseButton"),
+  devUnlockDialog: document.querySelector("#devUnlockDialog"),
+  devUnlockInput: document.querySelector("#devUnlockInput"),
+  devSettingsDialog: document.querySelector("#devSettingsDialog"),
+  devSettingsForm: document.querySelector("#devSettingsForm"),
+  devUpdatePathInput: document.querySelector("#devUpdatePathInput"),
+  devEffectiveUpdatePath: document.querySelector("#devEffectiveUpdatePath"),
+  devDefaultUpdatePath: document.querySelector("#devDefaultUpdatePath"),
+  devSettingsStatus: document.querySelector("#devSettingsStatus"),
+  devSettingsSaveButton: document.querySelector("#devSettingsSaveButton"),
+  devSettingsResetButton: document.querySelector("#devSettingsResetButton"),
+  devSettingsCloseButton: document.querySelector("#devSettingsCloseButton"),
   backButton: document.querySelector("#backButton"),
   checkButton: document.querySelector("#checkButton"),
   guideBackButton: document.querySelector("#guideBackButton"),
@@ -146,6 +160,9 @@ function showView(view) {
   }
   if (view === "features") {
     featuresScreen.refresh();
+  }
+  if (view === "link-sprite") {
+    linkSpriteEditor.refresh();
   }
 }
 
@@ -253,7 +270,9 @@ function selectedProjectPayload() {
 function extractAssetRequiredCheckIds() {
   const packagedLinuxDownload = Boolean(state.runtimeInfo?.downloaded_linux_game_executable);
   const baseIds = ["python", "venv", "python-dependencies", "rom"];
-  return packagedLinuxDownload ? [...baseIds, "game-executable-download"] : [...baseIds, "make", "c-compiler", "sdl2-dev"];
+  return packagedLinuxDownload
+    ? [...baseIds, "game-executable-download"]
+    : [...baseIds, "make", "c-compiler", "sdl2-dev"];
 }
 
 // Re-runs the backend sibling scan, keeps the selected project alive when it still
@@ -419,10 +438,12 @@ const projectCards = connectProjectCards(helpers);
 const environmentScreen = connectEnvironmentScreen(helpers);
 const controlsScreen = connectControlsScreen(helpers);
 const featuresScreen = connectFeaturesScreen(helpers);
+const linkSpriteEditor = connectLinkSpriteEditor(helpers);
 const repoUpdateManager = connectRepoUpdateManager(helpers);
 helpers.openRepoUpdate = repoUpdateManager.open;
 connectScanPathManager(helpers);
 connectLauncherUpdateChecker(helpers);
+connectDevSettings(helpers);
 
 elements.refreshButton.addEventListener("click", refreshScan);
 elements.backButton.addEventListener("click", () => showView("builds"));
@@ -523,5 +544,6 @@ showView(state.activeView);
 await loadSetupGuidance();
 await loadGuideContent();
 await loadRuntimeInfo();
+await loadSavedRepoSettings(helpers);
 await refreshRomStatus();
 refreshScan();

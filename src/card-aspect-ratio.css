@@ -1,8 +1,7 @@
 /* Styles for the per-card inline Aspect Ratio compound widget (input + arrow + flyout).
    Lives in its own stylesheet so the project-card grid changes in styles.css stay focused. */
 
-/* The widget wrapper anchors the flyout via position: relative. The card slot it mounts
-   into is one of the two 1fr columns in .card-config-actions. */
+/* The widget wrapper anchors the flyout via position: relative inside the card config area. */
 .aspect-widget {
   position: relative;
   display: grid;

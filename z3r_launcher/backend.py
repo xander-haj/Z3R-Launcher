@@ -14,12 +14,22 @@ import tempfile
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 import zipfile
 from pathlib import Path
 from typing import Any, Callable
 
 from . import __version__
+from .link_sprite_editor import (
+    LinkSpritePaletteError,
+    read_link_sprite_palette as read_link_sprite_palette_file,
+    write_link_sprite_palette as write_link_sprite_palette_file,
+)
+from .link_sprite_preview import (
+    LinkSpritePreviewError,
+    read_compiled_link_graphics,
+)
 
 
 APP_ID = "io.github.xander_haj.Z3RLauncher"
@@ -31,6 +41,7 @@ Z3R_RELEASES_URL = "https://github.com/xander-haj/Z3R/releases"
 Z3R_BETA_RELEASES_URL = "https://github.com/xander-haj/Z3R-Beta/releases"
 Z3R_RELEASE_API_URL = "https://api.github.com/repos/xander-haj/Z3R/releases/latest"
 Z3R_BETA_RELEASE_API_URL = "https://api.github.com/repos/xander-haj/Z3R-Beta/releases/latest"
+LAUNCHER_RELEASE_API_URL = "https://api.github.com/repos/xander-haj/Z3R-Launcher/releases/latest"
 SPRITES_SOURCE_URL = "https://github.com/snesrev/sprites-gfx.git"
 SHADERS_SOURCE_URL = "https://github.com/snesrev/glsl-shaders"
 MSU_DOWNLOAD_URL = "https://www.zeldix.net/f11-msu1-development"
@@ -38,6 +49,9 @@ MSU_DIR = "msu"
 SPRITES_DIR = "sprites-gfx"
 SHADERS_DIR = "glsl-shaders"
 STORED_ROM_NAME = "zelda3.sfc"
+DEV_SETTINGS_FILE = "dev-settings.json"
+REPO_SETTINGS_FILE = "repo-settings.json"
+GITHUB_TOKEN_ENV = "Z3R_LAUNCHER_GITHUB_TOKEN"
 FLATPAK_INFO_PATH = Path("/.flatpak-info")
 C_COMPILER_CANDIDATES = ("cc", "gcc", "clang")
 APPIMAGE_ENV_KEYS = ("APPDIR", "APPIMAGE", "ARGV0", "OWD", "LD_LIBRARY_PATH")
@@ -175,6 +189,117 @@ def app_data_dir() -> Path:
     if base:
         return Path(base) / "z3r-launcher"
     return Path.home() / ".local" / "share" / "z3r-launcher"
+
+
+def dev_settings_path() -> Path:
+    return app_data_dir() / DEV_SETTINGS_FILE
+
+
+def read_dev_settings_file() -> dict[str, Any]:
+    path = dev_settings_path()
+
+    try:
+        settings = json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, OSError, json.JSONDecodeError):
+        return {}
+
+    return settings if isinstance(settings, dict) else {}
+
+
+def write_dev_settings(launcher_update_api_url: str) -> None:
+    path = dev_settings_path()
+
+    if not launcher_update_api_url:
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            pass
+        return
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {"launcher_update_api_url": launcher_update_api_url}
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def dev_settings_snapshot() -> dict[str, Any]:
+    override = read_dev_settings_file().get("launcher_update_api_url")
+    override_url = normalize_launcher_update_api_url(override) if isinstance(override, str) else ""
+    effective_url = override_url or LAUNCHER_RELEASE_API_URL
+    return {
+        "launcher_update_api_url": override_url,
+        "default_launcher_update_api_url": LAUNCHER_RELEASE_API_URL,
+        "effective_launcher_update_api_url": effective_url,
+    }
+
+
+def launcher_release_api_url() -> str:
+    return dev_settings_snapshot()["effective_launcher_update_api_url"]
+
+
+def repo_settings_path() -> Path:
+    return app_data_dir() / REPO_SETTINGS_FILE
+
+
+def read_repo_settings_file() -> dict[str, Any]:
+    path = repo_settings_path()
+
+    try:
+        settings = json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, OSError, json.JSONDecodeError):
+        return {}
+
+    return settings if isinstance(settings, dict) else {}
+
+
+def normalize_repo_scan_paths(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+
+    paths: list[str] = []
+    seen: set[str] = set()
+    for item in value:
+        if not isinstance(item, str):
+            continue
+        path = item.strip()
+        if not path or "\0" in path or path in seen:
+            continue
+        seen.add(path)
+        paths.append(path)
+    return paths
+
+
+def normalize_repo_clone_path(value: Any, scan_paths: list[str]) -> str:
+    if not isinstance(value, str):
+        return ""
+
+    path = value.strip()
+    if not path or "\0" in path:
+        return ""
+    return path if path in scan_paths else ""
+
+
+def repo_settings_snapshot() -> dict[str, Any]:
+    settings = read_repo_settings_file()
+    scan_paths = normalize_repo_scan_paths(settings.get("scan_paths"))
+    clone_path = normalize_repo_clone_path(settings.get("clone_path"), scan_paths)
+    return {"scan_paths": scan_paths, "clone_path": clone_path or None}
+
+
+def write_repo_settings(scan_paths: list[str], clone_path: str) -> None:
+    path = repo_settings_path()
+
+    if not scan_paths and not clone_path:
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            pass
+        return
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload: dict[str, Any] = {"scan_paths": scan_paths}
+    if clone_path:
+        payload["clone_path"] = clone_path
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 def legacy_app_data_dirs() -> list[Path]:
@@ -570,6 +695,10 @@ class LauncherBackend:
             "scan_siblings": self.scan_siblings,
             "app_runtime_info": self.app_runtime_info,
             "launcher_version": self.launcher_version,
+            "read_repo_settings": self.read_repo_settings,
+            "save_repo_settings": self.save_repo_settings,
+            "read_dev_settings": self.read_dev_settings,
+            "save_dev_settings": self.save_dev_settings,
             "install_launcher_update": self.install_launcher_update,
             "check_environment": self.check_environment,
             "launch_game": self.launch_game,
@@ -589,6 +718,10 @@ class LauncherBackend:
             "store_msu_paths": self.store_msu_paths,
             "install_feature_asset": self.install_feature_asset,
             "read_sprite_preview": self.read_sprite_preview,
+            "read_link_sprite_preview": self.read_link_sprite_preview,
+            "read_link_sprite_palette": self.read_link_sprite_palette,
+            "save_link_sprite_palette": self.save_link_sprite_palette,
+            "build_link_sprite_assets": self.build_link_sprite_assets,
             "apply_snesrev_makefile_patch": self.apply_snesrev_makefile_patch,
             "apply_snesrev_solution_patch": self.apply_snesrev_solution_patch,
             "stored_rom_status": self.stored_rom_status,
@@ -615,6 +748,29 @@ class LauncherBackend:
 
     def launcher_version(self) -> str:
         return current_update_version()
+
+    def read_repo_settings(self) -> dict[str, Any]:
+        return repo_settings_snapshot()
+
+    def save_repo_settings(
+        self,
+        scan_paths: list[str] | None = None,
+        clone_path: str | None = None,
+    ) -> dict[str, Any]:
+        normalized_scan_paths = normalize_repo_scan_paths(scan_paths or [])
+        normalized_clone_path = normalize_repo_clone_path(clone_path, normalized_scan_paths)
+        write_repo_settings(normalized_scan_paths, normalized_clone_path)
+        return repo_settings_snapshot()
+
+    def read_dev_settings(self) -> dict[str, Any]:
+        return dev_settings_snapshot()
+
+    def save_dev_settings(self, launcher_update_api_url: str | None = None) -> dict[str, Any]:
+        url = normalize_launcher_update_api_url(launcher_update_api_url or "")
+        write_dev_settings(url)
+        snapshot = dev_settings_snapshot()
+        snapshot["message"] = "Dev update path saved." if url else "Dev update path reset."
+        return snapshot
 
     def app_runtime_info(self) -> dict[str, Any]:
         default_root = resolve_scan_root(None)
@@ -915,6 +1071,85 @@ class LauncherBackend:
             "pixel_data": list(pixel_data),
             "palette_data": list(palette_data),
         }
+
+    def read_link_sprite_preview(self, project_path: str) -> dict[str, Any]:
+        """Return Link sprite pixels for palette previews, preferring active LinkGraphics ZSPR."""
+
+        project = Path(project_path)
+        link_graphics = active_link_graphics(project)
+        if link_graphics:
+            return self.read_link_sprite_zspr_preview(project, link_graphics)
+        try:
+            pixel_data = read_compiled_link_graphics(project)
+        except LinkSpritePreviewError as error:
+            raise LauncherError(str(error)) from error
+        return {
+            "label": "Compiled Link graphics",
+            "source": "zelda3_assets.dat",
+            "pixel_data": list(pixel_data),
+        }
+
+    def read_link_sprite_zspr_preview(self, project: Path, sprite_path: str) -> dict[str, Any]:
+        """Read the active LinkGraphics ZSPR file and return only its pixel data for recoloring."""
+
+        relative = safe_relative_path(sprite_path)
+        storage = rom_storage_dir()
+        sprite = next((path for path in (project / relative, storage / relative) if path.is_file()), None)
+        if not sprite:
+            raise LauncherError(f"Active LinkGraphics sprite was not found: {display_path(relative)}")
+        try:
+            bytes_data = sprite.read_bytes()
+        except OSError as error:
+            raise LauncherError(f"Could not read sprite {display_path(sprite)}: {error}") from error
+        pixel_data, _palette_data = parse_zspr_preview(bytes_data)
+        return {
+            "label": sprite.stem or display_path(relative),
+            "source": path_to_slash(relative),
+            "pixel_data": list(pixel_data),
+        }
+
+    def read_link_sprite_palette(self, project_path: str) -> dict[str, Any]:
+        try:
+            return read_link_sprite_palette_file(Path(project_path))
+        except LinkSpritePaletteError as error:
+            raise LauncherError(str(error)) from error
+        except OSError as error:
+            raise LauncherError(f"Could not read Link sprite palette: {error}") from error
+
+    def save_link_sprite_palette(
+        self,
+        project_path: str,
+        values: list[Any],
+        active: bool = True,
+    ) -> dict[str, Any]:
+        try:
+            snapshot = write_link_sprite_palette_file(Path(project_path), values, active)
+        except LinkSpritePaletteError as error:
+            raise LauncherError(str(error)) from error
+        except OSError as error:
+            raise LauncherError(f"Could not write Link sprite palette: {error}") from error
+        snapshot["message"] = (
+            "Link sprite palette override saved."
+            if active
+            else "Link sprite palette override disabled."
+        )
+        return snapshot
+
+    def build_link_sprite_assets(self, project_path: str) -> dict[str, Any]:
+        project = Path(project_path)
+        python = venv_python(project / ".venv") or venv_python(project / "venv")
+        if not python:
+            raise LauncherError("Create a venv before rebuilding Link sprite assets.")
+        if not (project / "assets" / "restool.py").is_file():
+            raise LauncherError(
+                f"The selected project does not contain assets/restool.py: {display_path(project)}"
+            )
+        return run_command(
+            display_path(python),
+            ["assets/restool.py"],
+            project,
+            "Link sprite asset file rebuilt.",
+        )
 
     def read_randomizer_setup(self, project_path: str) -> dict[str, Any]:
         project = Path(project_path)
@@ -1267,6 +1502,7 @@ def inspect_candidate(path: Path, owner: str | None) -> dict[str, Any] | None:
     has_makefile = (path / "Makefile").exists()
     has_solution = (path / "Zelda3.sln").exists()
     has_source = has_makefile or has_solution or (path / "run_with_tcc.bat").exists()
+    link_sprite_editor_available = (path / "assets" / "sprite_sheets.py").is_file()
     git_repo = (path / ".git").exists()
     if not asset_path and not executable_path and not has_source:
         return None
@@ -1296,6 +1532,7 @@ def inspect_candidate(path: Path, owner: str | None) -> dict[str, Any] | None:
         "snesrev_makefile_patch_applied": makefile_applied,
         "snesrev_solution_patch_applied": solution_applied,
         "source_patch_needed": source_patch_for_platform(is_snesrev, has_solution, makefile_applied, solution_applied),
+        "link_sprite_editor_available": link_sprite_editor_available,
         "status": status,
         "notes": notes,
     }
@@ -1544,6 +1781,30 @@ def normalize_github_url(repo_url: str) -> str:
     if not trimmed.startswith("https://github.com/"):
         raise LauncherError("Enter a GitHub URL that starts with https://github.com/.")
     return trimmed.rstrip("/")
+
+
+def normalize_launcher_update_api_url(value: str) -> str:
+    trimmed = value.strip()
+
+    if not trimmed:
+        return ""
+
+    if trimmed.startswith("https://github.com/"):
+        owner, repo = github_repo_owner_and_name(normalize_github_url(trimmed))
+        return f"https://api.github.com/repos/{owner}/{repo}/releases/latest"
+
+    api_match = re.fullmatch(
+        r"https://api\.github\.com/repos/([^/\s]+)/([^/\s]+)/releases/latest",
+        trimmed.rstrip("/"),
+    )
+    if not api_match:
+        raise LauncherError("Enter a GitHub repo URL or a GitHub latest-release API URL.")
+
+    owner, repo = api_match.groups()
+    if not is_safe_segment(owner) or not is_safe_segment(repo):
+        raise LauncherError("The update repository path contains unsupported characters.")
+
+    return f"https://api.github.com/repos/{owner}/{repo}/releases/latest"
 
 
 def github_repo_owner_and_name(repo_url: str) -> tuple[str, str]:
@@ -2021,6 +2282,20 @@ def build_ini_snapshot(project_path: str, contents: str) -> dict[str, Any]:
         "keymap_lines": keymap_lines,
         "gamepad_lines": gamepad_lines,
     }
+
+
+def active_link_graphics(project: Path) -> str | None:
+    """Return the active LinkGraphics value from zelda3.ini, ignoring commented examples."""
+
+    path = project / "zelda3.ini"
+    try:
+        snapshot = build_ini_snapshot(str(project), path.read_text(encoding="utf-8"))
+    except OSError:
+        return None
+    for line in snapshot["graphics_lines"]:
+        if line["key"].lower() == "linkgraphics" and not line["commented"] and line["value"].strip():
+            return line["value"].strip()
+    return None
 
 
 def parse_section_header(trimmed: str) -> str | None:
@@ -2533,7 +2808,7 @@ def is_safe_repo_path(path: str) -> bool:
 
 def fetch_latest_release(update_dir: Path) -> dict[str, Any]:
     release_json = update_dir / "latest-release.json"
-    download_url_to_file("https://api.github.com/repos/xander-haj/Z3R-Launcher/releases/latest", release_json, github_api=True)
+    download_url_to_file(launcher_release_api_url(), release_json, github_api=True)
     try:
         release = json.loads(release_json.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
@@ -2605,6 +2880,9 @@ def download_url_to_file(url: str, destination: Path, github_api: bool) -> None:
     headers = {"User-Agent": "Z3R-Launcher-Updater"}
     if github_api:
         headers["Accept"] = "application/vnd.github+json"
+    token = github_update_token(url)
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
     errors: list[str] = []
     context = updater_ssl_context() if url.lower().startswith("https://") else None
     for attempt in range(4):
@@ -2618,6 +2896,13 @@ def download_url_to_file(url: str, destination: Path, github_api: bool) -> None:
             errors.append(str(error))
             time.sleep(2 + attempt)
     raise LauncherError(f"Could not download update file: {'; '.join(errors)}")
+
+
+def github_update_token(url: str) -> str:
+    host = urllib.parse.urlparse(url).hostname or ""
+    if host.lower() not in {"api.github.com", "github.com"}:
+        return ""
+    return os.environ.get(GITHUB_TOKEN_ENV, "").strip()
 
 
 def current_update_version() -> str:

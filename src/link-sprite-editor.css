@@ -1,0 +1,242 @@
+/* Link Sprite Editor styling for the armor/gloves palette override in assets/sprite_sheets.py. */
+
+.link-sprite-shell {
+  display: grid;
+  gap: 22px;
+}
+
+.link-sprite-author {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.link-sprite-author:empty {
+  display: none;
+}
+
+.link-sprite-content {
+  display: grid;
+  max-width: 1080px;
+  gap: 14px;
+}
+
+.link-sprite-editor {
+  display: grid;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 2px solid var(--gold-dim);
+  border-radius: var(--radius);
+  background: rgba(7, 19, 13, 0.78);
+}
+
+.link-sprite-editor-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.link-sprite-editor-meta {
+  display: grid;
+  gap: 8px;
+}
+
+.link-sprite-editor h3,
+.link-palette-row h4 {
+  margin: 0;
+}
+
+.link-sprite-state {
+  width: fit-content;
+  min-width: 146px;
+  padding: 6px 10px;
+  border: 2px solid currentColor;
+  border-radius: var(--radius);
+  font-size: 0.76rem;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.link-sprite-state.active {
+  color: var(--green);
+}
+
+.link-sprite-state.disabled {
+  color: var(--muted);
+}
+
+.link-sprite-path {
+  margin: 0;
+}
+
+.link-sprite-preview-status {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.link-palette-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.link-palette-row {
+  display: grid;
+  gap: 8px;
+}
+
+.link-palette-row h4 {
+  color: var(--text);
+  font-size: 0.94rem;
+}
+
+.link-palette-row-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 176px;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.link-palette-cells {
+  display: grid;
+  grid-template-columns: repeat(15, minmax(48px, 1fr));
+  gap: 7px;
+}
+
+.link-sprite-row-preview {
+  display: grid;
+  min-height: 198px;
+  align-items: start;
+}
+
+.link-sprite-preview-card {
+  display: grid;
+  grid-template-rows: 34px 128px 38px;
+  gap: 8px;
+  width: 100%;
+}
+
+.link-sprite-preview-card button,
+.link-sprite-preview-card select {
+  width: 100%;
+  min-width: 0;
+}
+
+.link-sprite-preview-card select {
+  height: 38px;
+  padding: 0 8px;
+  border: 2px solid var(--gold-dim);
+  border-radius: calc(var(--radius) - 2px);
+  background: rgba(5, 18, 10, 0.78);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.72rem;
+}
+
+.link-sprite-preview-canvas-wrap {
+  display: grid;
+  min-width: 0;
+  padding: 8px;
+  border: 2px solid var(--gold-dim);
+  border-radius: calc(var(--radius) - 2px);
+  background:
+    linear-gradient(45deg, rgba(255, 255, 255, 0.06) 25%, transparent 25% 75%, rgba(255, 255, 255, 0.06) 75%),
+    linear-gradient(45deg, rgba(255, 255, 255, 0.06) 25%, transparent 25% 75%, rgba(255, 255, 255, 0.06) 75%),
+    rgba(3, 10, 7, 0.92);
+  background-position: 0 0, 6px 6px, 0 0;
+  background-size: 12px 12px;
+  place-items: center;
+}
+
+.link-sprite-preview-canvas-wrap canvas {
+  display: block;
+  width: 100%;
+  max-width: 112px;
+  height: 108px;
+  image-rendering: pixelated;
+  object-fit: contain;
+}
+
+.link-palette-cell {
+  display: grid;
+  grid-template-rows: auto 34px 28px;
+  gap: 5px;
+  min-width: 0;
+}
+
+.link-palette-cell span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  text-align: center;
+}
+
+.link-palette-cell input[type="color"] {
+  width: 100%;
+  height: 34px;
+  padding: 2px;
+  border: 2px solid var(--gold-dim);
+  border-radius: calc(var(--radius) - 2px);
+  background: rgba(5, 18, 10, 0.78);
+}
+
+.link-palette-hex {
+  width: 100%;
+  min-width: 0;
+  padding: 0 4px;
+  border: 2px solid var(--gold-dim);
+  border-radius: calc(var(--radius) - 2px);
+  background: rgba(5, 18, 10, 0.78);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.68rem;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.link-palette-hex.invalid {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.link-sprite-actions {
+  display: grid;
+  grid-template-columns: repeat(3, max-content);
+  gap: 10px;
+  justify-content: start;
+}
+
+.link-sprite-status {
+  min-height: 1.1rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.link-sprite-status.success {
+  color: var(--green);
+}
+
+.link-sprite-status.warning {
+  color: var(--gold);
+}
+
+.link-sprite-status.error {
+  color: var(--red);
+}
+
+@media (max-width: 960px) {
+  .link-palette-row-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .link-palette-cells {
+    grid-template-columns: repeat(auto-fit, minmax(48px, 1fr));
+  }
+
+  .link-sprite-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

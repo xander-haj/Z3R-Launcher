@@ -1,0 +1,50 @@
+/* Hidden developer settings modal. It intentionally has no visible navigation entry. */
+
+.dev-unlock-dialog {
+  width: min(320px, calc(100vw - 48px));
+}
+
+.dev-unlock-form {
+  padding: 18px;
+}
+
+.dev-unlock-input {
+  width: 100%;
+  min-height: 44px;
+  border: 2px solid var(--gold-dim);
+  border-radius: var(--radius);
+  padding: 0 12px;
+  background: rgba(5, 18, 10, 0.78);
+  color: var(--text);
+  font: inherit;
+  letter-spacing: 0.2em;
+  text-align: center;
+}
+
+.dev-settings-dialog {
+  width: min(780px, calc(100vw - 48px));
+}
+
+.dev-settings-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.dev-settings-paths {
+  display: grid;
+  gap: 8px;
+}
+
+.dev-settings-paths strong {
+  color: var(--gold-bright);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+}
+
+.dev-settings-status {
+  min-height: 1.2rem;
+}
+
+.dev-settings-actions {
+  gap: 12px;
+}
