@@ -6,7 +6,7 @@ import { escapeHtml } from "./shared-utils.js";
 let pickerId = 0;
 
 // Adds a text-filterable picker plus an apply button for one group of discovered assets.
-export function appendOptionPicker(section, options, buttonLabel, onApply, selectedValue = "") {
+export function appendOptionPicker(section, options, buttonLabel, onApply, selectedValue = "", config = {}) {
   const row = document.createElement("div");
   const listId = `featuresPicker${pickerId++}`;
   row.className = "features-picker-row";
@@ -37,6 +37,8 @@ export function appendOptionPicker(section, options, buttonLabel, onApply, selec
   const menu = row.querySelector(".features-picker-menu");
   const button = row.lastElementChild;
   const lookup = buildOptionLookup(options);
+  button.disabled = Boolean(config.disabled);
+  button.title = config.disabledTitle ?? "";
   input.value = optionLabelForValue(options, selectedValue) ?? optionDisplayLabel(options[0]);
   input.addEventListener("input", () => {
     if (!menu.hidden) {
@@ -64,6 +66,10 @@ export function appendOptionPicker(section, options, buttonLabel, onApply, selec
     }, 0);
   });
   button.addEventListener("click", async () => {
+    if (button.disabled) {
+      return;
+    }
+
     const selectedValue = resolveValue();
 
     button.disabled = true;

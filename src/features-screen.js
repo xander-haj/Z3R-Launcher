@@ -83,6 +83,7 @@ function renderFeatures(refs, snapshot, assets, helpers) {
     title: "Link sprite",
     kind: "sprites",
     lineKey: LINK_GRAPHICS_KEY,
+    section: "Graphics",
     lines: snapshot.graphics_lines,
     group: assets.sprites,
     sourceUrl: assets.sprites_source_url,
@@ -93,6 +94,7 @@ function renderFeatures(refs, snapshot, assets, helpers) {
     title: "Shader",
     kind: "shaders",
     lineKey: SHADER_KEY,
+    section: "Graphics",
     lines: snapshot.graphics_lines,
     group: assets.shaders,
     sourceUrl: assets.shaders_source_url,
@@ -162,6 +164,10 @@ function renderMsuSection(refs, snapshot, assets, helpers) {
       },
       pathLine.value,
     );
+  } else if (assets.msu.options.length > 0) {
+    appendUnavailable(section, `${ENABLE_MSU_KEY} or ${MSU_PATH_KEY} was not found in zelda3.ini.`);
+  } else {
+    appendUnavailable(section, "No MSU packs found in shared storage or the selected build.");
   }
 
   refs.content.append(section);
@@ -174,7 +180,7 @@ function renderSelectableAssetSection(refs, snapshot, assets, helpers, config) {
   const actionRow = appendActionRow(section);
 
   appendLinkButton(actionRow, "Source", config.sourceUrl, helpers);
-  if (!config.group.available) {
+  if (!config.group.shared_available) {
     appendButton(actionRow, config.cloneLabel, async () => {
       const result = await helpers.call("clone_feature_asset", { assetKind: config.kind });
       helpers.log(result.message);
@@ -182,7 +188,7 @@ function renderSelectableAssetSection(refs, snapshot, assets, helpers, config) {
     });
   }
 
-  if (config.group.options.length > 0 && line) {
+  if (config.group.options.length > 0) {
     const picker = appendOptionPicker(
       section,
       config.group.options,
@@ -190,16 +196,25 @@ function renderSelectableAssetSection(refs, snapshot, assets, helpers, config) {
       async (value) => {
         const result = await installAsset(config.kind, value, helpers);
         const [assetPath] = splitInstallOutput(result.stdout);
-        await saveIniValue(line, assetPath, helpers);
+        await saveIniValue(line, assetPath, helpers, {
+          section: config.section,
+          key: config.lineKey,
+        });
         helpers.log(result.message);
         await refreshFeaturesContent(refs, helpers);
       },
-      line.value,
+      line?.value ?? "",
     );
 
     if (config.kind === "sprites") {
       appendSpritePreview(section, picker, helpers);
     }
+
+    if (!line) {
+      appendUnavailable(section, `${config.lineKey} will be created in zelda3.ini when applied.`);
+    }
+  } else {
+    appendUnavailable(section, `No ${config.title.toLowerCase()} options found.`);
   }
 
   refs.content.append(section);
@@ -309,7 +324,21 @@ async function saveCheckboxLine(line, checkbox, state, helpers) {
 }
 
 // Writes only the value for an existing INI line so surrounding whitespace is preserved.
-async function saveIniValue(line, value, helpers) {
+async function saveIniValue(line, value, helpers, fallback = null) {
+  if (!line) {
+    if (!fallback) {
+      throw new Error("No zelda3.ini line was available to update.");
+    }
+
+    await helpers.call("set_zelda_ini_value", {
+      projectPath: helpers.state.selectedPath,
+      section: fallback.section,
+      key: fallback.key,
+      value,
+    });
+    return;
+  }
+
   const rawLine = replaceIniValue(line.raw, line.key, value);
 
   await helpers.call("update_zelda_ini_line", {

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import filecmp
 import json
 import os
 import platform
@@ -738,6 +739,7 @@ class LauncherBackend:
             "apply_repo_update": self.apply_repo_update,
             "read_zelda_ini": self.read_zelda_ini,
             "update_zelda_ini_line": self.update_zelda_ini_line,
+            "set_zelda_ini_value": self.set_zelda_ini_value,
         }
 
     def invoke(self, command: str, payload: dict[str, Any] | None = None) -> Any:
@@ -999,6 +1001,26 @@ class LauncherBackend:
             raise LauncherError(f"Could not write {display_path(path)}: {error}") from error
         return action_result(True, f"zelda3.ini line {line_number} updated.", raw_line)
 
+    def set_zelda_ini_value(self, project_path: str, section: str, key: str, value: str) -> dict[str, Any]:
+        section_name = clean_ini_section_name(section)
+        key_name = clean_ini_key_name(key)
+        value_text = clean_ini_value(value)
+        path = Path(project_path) / "zelda3.ini"
+        try:
+            contents = path.read_text(encoding="utf-8")
+        except OSError as error:
+            raise LauncherError(f"Could not read {display_path(path)}: {error}") from error
+
+        lines, newline = split_preserving_newline(contents)
+        raw_line = f"{key_name} = {value_text}"
+        upsert_ini_line(lines, section_name, key_name, raw_line)
+
+        try:
+            path.write_text(newline.join(lines), encoding="utf-8")
+        except OSError as error:
+            raise LauncherError(f"Could not write {display_path(path)}: {error}") from error
+        return action_result(True, f"zelda3.ini {section_name}.{key_name} updated.", raw_line)
+
     def read_feature_assets(self, project_path: str) -> dict[str, Any]:
         project = Path(project_path)
         storage = rom_storage_dir()
@@ -1023,16 +1045,23 @@ class LauncherBackend:
 
     def clone_feature_asset(self, asset_kind: str) -> dict[str, Any]:
         catalog = {
-            "sprites": (SPRITES_DIR, SPRITES_SOURCE_URL, "sprites"),
-            "shaders": (SHADERS_DIR, SHADERS_SOURCE_URL, "shaders"),
+            "sprites": (SPRITES_DIR, SPRITES_SOURCE_URL, "sprites", ["zspr"]),
+            "shaders": (SHADERS_DIR, SHADERS_SOURCE_URL, "shaders", ["glsl", "glslp"]),
         }
         if asset_kind not in catalog:
             raise LauncherError("Unknown cloneable feature asset.")
-        folder, url, label = catalog[asset_kind]
+        folder, url, label, extensions = catalog[asset_kind]
         storage = rom_storage_dir()
         destination = storage / folder
         if destination.is_dir():
-            return action_result(True, f"{label} repository is already available.", display_path(destination))
+            options = list_file_options(destination, folder, extensions, "shared")
+            if options:
+                return action_result(True, f"{label} repository is already available.", display_path(destination))
+            if (destination / ".git").is_dir():
+                return run_command(git_program(), ["pull", "--ff-only"], destination, f"Updated {label}.")
+            raise LauncherError(
+                f"{label} folder exists but contains no supported assets: {display_path(destination)}"
+            )
         storage.mkdir(parents=True, exist_ok=True)
         return run_command(git_program(), ["clone", url, folder], storage, f"Cloned {label}.")
 
@@ -1048,8 +1077,10 @@ class LauncherBackend:
     def install_feature_asset(self, project_path: str, asset_kind: str, asset_value: str) -> dict[str, Any]:
         project = Path(project_path)
         storage = rom_storage_dir()
-        if asset_kind in ("sprites", "shaders"):
+        if asset_kind == "sprites":
             return install_single_asset(project, storage, asset_value)
+        if asset_kind == "shaders":
+            return install_shader_asset(project, storage, asset_value)
         if asset_kind == "msu":
             return install_msu_asset(project, storage, asset_value)
         raise LauncherError("Unknown feature asset type.")
@@ -2135,20 +2166,41 @@ def ensure_project_sdl2(project: Path) -> bool:
     return True
 
 
-def copy_dir_contents(source: Path, destination: Path) -> int:
+def copy_dir_contents(source: Path, destination: Path, ignored_names: set[str] | None = None) -> int:
     if not source.is_dir():
         raise LauncherError(f"Source folder does not exist: {display_path(source)}")
     destination.mkdir(parents=True, exist_ok=True)
     copied = 0
+    ignored = ignored_names or set()
     for child in source.iterdir():
+        if child.name in ignored:
+            continue
         target = destination / child.name
         if child.is_dir():
-            copied += copy_dir_contents(child, target)
+            copied += copy_dir_contents(child, target, ignored)
         elif child.is_file():
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(child, target)
             copied += 1
     return copied
+
+
+def folder_matches_all_files(source: Path, destination: Path, ignored_names: set[str] | None = None) -> bool:
+    if not source.is_dir() or not destination.is_dir():
+        return False
+
+    ignored = ignored_names or set()
+    for child in source.iterdir():
+        if child.name in ignored:
+            continue
+        target = destination / child.name
+        if child.is_dir():
+            if not folder_matches_all_files(child, target, ignored):
+                return False
+        elif child.is_file():
+            if not target.is_file() or not filecmp.cmp(child, target, shallow=False):
+                return False
+    return True
 
 
 def join_stage_output(first: str, second: str) -> str:
@@ -2296,6 +2348,72 @@ def active_link_graphics(project: Path) -> str | None:
         if line["key"].lower() == "linkgraphics" and not line["commented"] and line["value"].strip():
             return line["value"].strip()
     return None
+
+
+def clean_ini_section_name(section: str) -> str:
+    name = str(section).strip()
+    if not name or any(character in name for character in "[]\r\n"):
+        raise LauncherError("The zelda3.ini section name is invalid.")
+    return name
+
+
+def clean_ini_key_name(key: str) -> str:
+    name = str(key).strip()
+    if not name or not is_key_shape(name):
+        raise LauncherError("The zelda3.ini key name is invalid.")
+    return name
+
+
+def clean_ini_value(value: str) -> str:
+    text = str(value).strip()
+    if "\r" in text or "\n" in text:
+        raise LauncherError("The zelda3.ini value cannot contain line breaks.")
+    return text
+
+
+def upsert_ini_line(lines: list[str], section: str, key: str, raw_line: str) -> None:
+    target_section = section.lower()
+    target_key = key.lower()
+    in_target_section = False
+    found_section = False
+    insert_at: int | None = None
+
+    for index, raw in enumerate(lines):
+        section_name = parse_section_header(raw.lstrip())
+        if section_name:
+            if in_target_section:
+                insert_at = index
+                break
+            in_target_section = section_name.lower() == target_section
+            if in_target_section:
+                found_section = True
+                insert_at = index + 1
+            continue
+
+        if not in_target_section:
+            continue
+
+        parsed = parse_key_line(raw.lstrip())
+        if parsed and parsed[0].lower() == target_key:
+            lines[index] = raw_line
+            return
+        insert_at = index + 1
+
+    if found_section:
+        lines.insert(insert_at if insert_at is not None else len(lines), raw_line)
+        return
+
+    append_ini_section(lines, section, raw_line)
+
+
+def append_ini_section(lines: list[str], section: str, raw_line: str) -> None:
+    insert_at = len(lines) - 1 if lines and lines[-1] == "" else len(lines)
+    addition = [f"[{section}]", raw_line]
+
+    if insert_at > 0 and lines[insert_at - 1].strip():
+        addition.insert(0, "")
+
+    lines[insert_at:insert_at] = addition
 
 
 def parse_section_header(trimmed: str) -> str | None:
@@ -2473,6 +2591,32 @@ def install_single_asset(project: Path, storage: Path, asset_value: str) -> dict
         raise LauncherError(f"Selected asset was not found in shared storage: {display_path(source)}")
     copy_file_with_parents(source, destination)
     return installed_result("Asset copied into the selected build.", relative)
+
+
+def install_shader_asset(project: Path, storage: Path, asset_value: str) -> dict[str, Any]:
+    relative = safe_relative_path(asset_value)
+    if not relative.parts or relative.parts[0] != SHADERS_DIR:
+        raise LauncherError("Selected shader path did not include the shader repository folder.")
+
+    source_root = storage / SHADERS_DIR
+    source = storage / relative
+    destination_root = project / SHADERS_DIR
+    destination = project / relative
+    ignored_names = {".git"}
+
+    if source.is_file():
+        if folder_matches_all_files(source_root, destination_root, ignored_names):
+            return installed_result("Shader repository already exists in the selected build.", relative)
+        copy_dir_contents(source_root, destination_root, ignored_names)
+        if not destination.is_file():
+            raise LauncherError(f"Copied shaders, but selected shader is still missing: {display_path(destination)}")
+        return installed_result("Shader repository copied into the selected build.", relative)
+
+    if destination.is_file():
+        return installed_result("Shader already exists in the selected build.", relative)
+    if not source_root.is_dir():
+        raise LauncherError(f"Shared shader repository was not found: {display_path(source_root)}")
+    raise LauncherError(f"Selected shader was not found in the build or shared storage: {display_path(relative)}")
 
 
 def install_msu_asset(project: Path, storage: Path, asset_value: str) -> dict[str, Any]:
