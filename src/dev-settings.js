@@ -20,6 +20,8 @@ export function connectDevSettings(helpers) {
   const state = {
     progress: 0,
     timer: null,
+    triggerCount: 0,
+    triggerTimer: null,
   };
 
   helpers.elements.devUnlockInput.addEventListener("keydown", (event) => handleUnlockKey(event, helpers, state));
@@ -37,8 +39,22 @@ export function connectDevSettings(helpers) {
     }
 
     event.preventDefault();
-    openUnlockDialog(helpers, state);
+    recordUnlockTriggerPress(helpers, state);
   });
+}
+
+// Requires three intentional Q presses within the timeout before showing the sequence box.
+function recordUnlockTriggerPress(helpers, state) {
+  state.triggerCount += 1;
+
+  if (state.triggerCount === 1) {
+    state.triggerTimer = window.setTimeout(() => resetUnlockTrigger(state), UNLOCK_TIMEOUT_MS);
+  }
+
+  if (state.triggerCount >= 3) {
+    resetUnlockTrigger(state);
+    openUnlockDialog(helpers, state);
+  }
 }
 
 // Opens the short-lived unlock input.
@@ -119,6 +135,7 @@ async function saveDevSettings(helpers) {
       launcherUpdateApiUrl: elements.devUpdatePathInput.value,
     });
     applyDevSettingsSnapshot(snapshot, helpers);
+    await helpers.refreshActivityUpdateInfo?.();
     elements.devSettingsStatus.textContent = snapshot.message;
     log(snapshot.message);
   } catch (error) {
@@ -136,6 +153,7 @@ async function resetDevSettings(helpers) {
       launcherUpdateApiUrl: "",
     });
     applyDevSettingsSnapshot(snapshot, helpers);
+    await helpers.refreshActivityUpdateInfo?.();
     elements.devSettingsStatus.textContent = snapshot.message;
     log(snapshot.message);
   } catch (error) {
@@ -153,7 +171,7 @@ function applyDevSettingsSnapshot(snapshot, helpers) {
 
 // Reports whether this keydown is the hidden entry trigger.
 function isDevUnlockTrigger(event, helpers) {
-  if (event.key.toLowerCase() !== "q" || event.altKey || event.ctrlKey || event.metaKey) {
+  if (event.repeat || event.key.toLowerCase() !== "q" || event.altKey || event.ctrlKey || event.metaKey) {
     return false;
   }
 
@@ -201,6 +219,18 @@ function closeUnlockDialog(helpers, state) {
   if (helpers.elements.devUnlockDialog.open) {
     helpers.elements.devUnlockDialog.close();
   }
+}
+
+function clearUnlockTriggerTimeout(state) {
+  if (state.triggerTimer !== null) {
+    window.clearTimeout(state.triggerTimer);
+    state.triggerTimer = null;
+  }
+}
+
+function resetUnlockTrigger(state) {
+  clearUnlockTriggerTimeout(state);
+  state.triggerCount = 0;
 }
 
 function clearUnlockTimeout(state) {

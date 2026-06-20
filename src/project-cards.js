@@ -300,9 +300,14 @@ function toggleCardMenu(card, menuName) {
 
   menu.removeAttribute("hidden");
   button.setAttribute("aria-expanded", "true");
+  card.classList.add("card-menu-open");
 }
 
 function closeAllCardMenus() {
+  for (const card of document.querySelectorAll(".project-card.card-menu-open")) {
+    card.classList.remove("card-menu-open");
+  }
+
   for (const menu of document.querySelectorAll(".card-action-menu")) {
     menu.setAttribute("hidden", "");
   }

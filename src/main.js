@@ -13,6 +13,9 @@ import { checksReady, updateEnvironmentActions } from "./environment-actions.js"
 import { connectRepoUpdateManager } from "./repo-update-manager.js";
 import { connectLauncherUpdateChecker } from "./launcher-update-checker.js";
 import { connectDevSettings } from "./dev-settings.js";
+import { collectAppElements } from "./app-elements.js";
+import { createActivityDrawer } from "./activity-drawer.js";
+import { createRomUploader } from "./rom-upload.js";
 import {
   connectScanPathManager,
   loadSavedRepoSettings,
@@ -41,89 +44,9 @@ const state = {
   repoUpdatePreview: null,
 };
 
-// DOM references collected once at boot so screen modules don't repeat querySelector
-// lookups on every render.
-const elements = {
-  viewPanels: document.querySelectorAll(".view-panel"),
-  parentPath: document.querySelector("#parentPath"),
-  projectList: document.querySelector("#projectList"),
-  checkList: document.querySelector("#checkList"),
-  stepList: document.querySelector("#stepList"),
-  manualGuideTitle: document.querySelector("#manualGuideTitle"),
-  manualGuideMeta: document.querySelector("#manualGuideMeta"),
-  manualGuideContent: document.querySelector("#manualGuideContent"),
-  logOutput: document.querySelector("#logOutput"),
-  activityToggle: document.querySelector("#activityToggle"),
-  activityPanel: document.querySelector("#activityPanel"),
-  refreshButton: document.querySelector("#refreshButton"),
-  updateCheckButton: document.querySelector("#updateCheckButton"),
-  scanPathButton: document.querySelector("#scanPathButton"),
-  uploadRomButton: document.querySelector("#uploadRomButton"),
-  scanPathDialog: document.querySelector("#scanPathDialog"),
-  scanPathForm: document.querySelector("#scanPathForm"),
-  scanPathInput: document.querySelector("#scanPathInput"),
-  scanPathSelectButton: document.querySelector("#scanPathSelectButton"),
-  scanPathAddButton: document.querySelector("#scanPathAddButton"),
-  scanPathList: document.querySelector("#scanPathList"),
-  scanPathCloseButton: document.querySelector("#scanPathCloseButton"),
-  scanPathsTabButton: document.querySelector("#scanPathsTabButton"),
-  cloneTabButton: document.querySelector("#cloneTabButton"),
-  scanPathsTabPanel: document.querySelector("#scanPathsTabPanel"),
-  cloneTabPanel: document.querySelector("#cloneTabPanel"),
-  clonePathSelect: document.querySelector("#clonePathSelect"),
-  clonePathNotice: document.querySelector("#clonePathNotice"),
-  cloneBetaCheckbox: document.querySelector("#cloneBetaCheckbox"),
-  cloneZ3RModalButton: document.querySelector("#cloneZ3RModalButton"),
-  cloneCustomUrl: document.querySelector("#cloneCustomUrl"),
-  cloneCustomModalButton: document.querySelector("#cloneCustomModalButton"),
-  environmentPlayableBadge: document.querySelector("#environmentPlayableBadge"),
-  repoUpdateDialog: document.querySelector("#repoUpdateDialog"),
-  repoUpdateForm: document.querySelector("#repoUpdateForm"),
-  repoUpdateTitle: document.querySelector("#repoUpdateTitle"),
-  repoUpdatePath: document.querySelector("#repoUpdatePath"),
-  repoUpdateWarnings: document.querySelector("#repoUpdateWarnings"),
-  repoUpdateSummary: document.querySelector("#repoUpdateSummary"),
-  repoUpdateFileList: document.querySelector("#repoUpdateFileList"),
-  repoUpdateOpenFolderButton: document.querySelector("#repoUpdateOpenFolderButton"),
-  repoUpdateRefreshButton: document.querySelector("#repoUpdateRefreshButton"),
-  repoUpdateApplyButton: document.querySelector("#repoUpdateApplyButton"),
-  repoUpdateCloseButton: document.querySelector("#repoUpdateCloseButton"),
-  devUnlockDialog: document.querySelector("#devUnlockDialog"),
-  devUnlockInput: document.querySelector("#devUnlockInput"),
-  devSettingsDialog: document.querySelector("#devSettingsDialog"),
-  devSettingsForm: document.querySelector("#devSettingsForm"),
-  devUpdatePathInput: document.querySelector("#devUpdatePathInput"),
-  devEffectiveUpdatePath: document.querySelector("#devEffectiveUpdatePath"),
-  devDefaultUpdatePath: document.querySelector("#devDefaultUpdatePath"),
-  devSettingsStatus: document.querySelector("#devSettingsStatus"),
-  devSettingsSaveButton: document.querySelector("#devSettingsSaveButton"),
-  devSettingsResetButton: document.querySelector("#devSettingsResetButton"),
-  devSettingsCloseButton: document.querySelector("#devSettingsCloseButton"),
-  backButton: document.querySelector("#backButton"),
-  checkButton: document.querySelector("#checkButton"),
-  guideBackButton: document.querySelector("#guideBackButton"),
-  venvButton: document.querySelector("#venvButton"),
-  dependenciesButton: document.querySelector("#dependenciesButton"),
-  extractButton: document.querySelector("#extractButton"),
-  extractVisualStudioButton: document.querySelector("#extractVisualStudioButton"),
-  extractTccButton: document.querySelector("#extractTccButton"),
-  environmentPlayButton: document.querySelector("#environmentPlayButton"),
-  clearLogButton: document.querySelector("#clearLogButton"),
-};
-
-const romFileInput = document.createElement("input");
-romFileInput.type = "file";
-romFileInput.accept = ".sfc";
-romFileInput.hidden = true;
-document.body.append(romFileInput);
-
-// Timestamped activity console entry used by every screen for command output and
-// non-fatal warnings. Keeps the log entries consistent and auto-scrolls to bottom.
-function log(message) {
-  const now = new Date().toLocaleTimeString();
-  elements.logOutput.textContent += `\n[${now}] ${message}`;
-  elements.logOutput.scrollTop = elements.logOutput.scrollHeight;
-}
+const elements = collectAppElements();
+const activityDrawer = createActivityDrawer(elements);
+const log = activityDrawer.log;
 
 // Safe backend invoker that routes backend errors into the activity log AND re-throws so
 // callers can guard their own UI flow when needed.
@@ -135,6 +58,8 @@ async function call(command, payload = {}) {
     throw error;
   }
 }
+
+const romUploader = createRomUploader(call);
 
 // Opens trusted manual-guide links through the backend so browser and packaged app behavior match.
 async function openExternalUrl(url) {
@@ -311,90 +236,6 @@ async function refreshRomStatus() {
   elements.scanPathButton.title = status.available ? "" : "Upload an SFC before managing repos.";
 }
 
-async function chooseRomFile() {
-  if (window.showOpenFilePicker) {
-    try {
-      const [handle] = await window.showOpenFilePicker({
-        multiple: false,
-        types: [
-          {
-            description: "SNES ROM",
-            accept: {
-              "application/octet-stream": [".sfc"],
-            },
-          },
-        ],
-      });
-      return handle.getFile();
-    } catch (error) {
-      if (error?.name === "AbortError") {
-        return null;
-      }
-      throw error;
-    }
-  }
-
-  return new Promise((resolve) => {
-    let settled = false;
-
-    function finish(file) {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      romFileInput.removeEventListener("change", onChange);
-      window.removeEventListener("focus", onFocus);
-      resolve(file);
-    }
-
-    function onChange() {
-      finish(romFileInput.files?.[0] ?? null);
-    }
-
-    function onFocus() {
-      window.setTimeout(() => {
-        if (!romFileInput.files?.length) {
-          finish(null);
-        }
-      }, 200);
-    }
-
-    romFileInput.value = "";
-    romFileInput.addEventListener("change", onChange);
-    window.addEventListener("focus", onFocus);
-    romFileInput.click();
-  });
-}
-
-async function storeSelectedRom() {
-  const file = await chooseRomFile();
-
-  if (!file) {
-    return null;
-  }
-
-  if (!file.name.toLowerCase().endsWith(".sfc")) {
-    throw new Error("Select a .sfc ROM file.");
-  }
-
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  return call("store_rom_upload", {
-    fileName: file.name,
-    dataBase64: bytesToBase64(bytes),
-  });
-}
-
-function bytesToBase64(bytes) {
-  const chunkSize = 0x8000;
-  let binary = "";
-
-  for (let index = 0; index < bytes.length; index += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
-  }
-
-  return btoa(binary);
-}
-
 // Loads the editable Setup Path JSON so step copy can change without backend edits.
 async function loadSetupGuidance() {
   try {
@@ -431,6 +272,7 @@ const helpers = {
   refreshScan,
   runAction,
   selectedProjectPayload,
+  refreshActivityUpdateInfo: activityDrawer.refreshUpdateInfo,
 };
 
 // Each connect*() returns a small object the bootstrap calls into (render/refresh).
@@ -444,14 +286,11 @@ helpers.openRepoUpdate = repoUpdateManager.open;
 connectScanPathManager(helpers);
 connectLauncherUpdateChecker(helpers);
 connectDevSettings(helpers);
+activityDrawer.connect(call);
 
 elements.refreshButton.addEventListener("click", refreshScan);
 elements.backButton.addEventListener("click", () => showView("builds"));
 elements.guideBackButton.addEventListener("click", () => showView("environment"));
-elements.activityToggle.addEventListener("click", () => {
-  const isOpen = elements.activityPanel.classList.toggle("open");
-  elements.activityToggle.setAttribute("aria-expanded", String(isOpen));
-});
 elements.checkButton.addEventListener("click", environmentScreen.runChecks);
 elements.uploadRomButton.addEventListener("click", async () => {
   elements.uploadRomButton.disabled = true;
@@ -463,7 +302,7 @@ elements.uploadRomButton.addEventListener("click", async () => {
       return;
     }
 
-    const status = await storeSelectedRom();
+    const status = await romUploader.storeSelectedRom();
 
     if (status) {
       log(`SFC stored at ${status.path}`);
@@ -483,9 +322,6 @@ connectRandomizerSetup({
   refreshScan,
   runAction,
   selectedProjectPayload,
-});
-elements.clearLogButton.addEventListener("click", () => {
-  elements.logOutput.textContent = "Ready.";
 });
 elements.venvButton.addEventListener("click", async () => {
   const payload = selectedProjectPayload();
@@ -543,6 +379,7 @@ elements.environmentPlayButton.addEventListener("click", async () => {
 showView(state.activeView);
 await loadSetupGuidance();
 await loadGuideContent();
+await activityDrawer.refreshUpdateInfo();
 await loadRuntimeInfo();
 await loadSavedRepoSettings(helpers);
 await refreshRomStatus();

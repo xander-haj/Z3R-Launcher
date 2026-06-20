@@ -88,6 +88,7 @@ if not linux:
 binaries = []
 datas = [
     (str(root / "src"), "src"),
+    (str(root / "dev_tools" / "link_sprite_editor"), "dev_tools/link_sprite_editor"),
     (str(root / "resources"), "resources"),
     (certifi.where(), "certifi"),
 ]

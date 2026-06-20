@@ -14,6 +14,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Callable
 
 from .backend import LauncherBackend, LauncherError, app_data_dir, open_external_url, static_dir
+from .platform_paths import link_sprite_devtools_dir
 
 
 HEARTBEAT_TIMEOUT_SECONDS = 45
@@ -160,15 +161,21 @@ def make_handler(state: ServerState, backend: LauncherBackend) -> type[BaseHTTPR
 
         def serve_static(self, parsed: urllib.parse.ParseResult) -> None:
             if parsed.path in ("", "/"):
-                path = static_dir() / "index.html"
+                root = static_dir()
+                path = root / "index.html"
+            elif parsed.path.startswith("/dev_tools/link_sprite_editor/"):
+                root = link_sprite_devtools_dir()
+                relative = urllib.parse.unquote(parsed.path).removeprefix("/dev_tools/link_sprite_editor/")
+                path = root / relative
             else:
+                root = static_dir()
                 relative = urllib.parse.unquote(parsed.path).lstrip("/")
-                path = static_dir() / relative
+                path = root / relative
 
             try:
-                root = static_dir().resolve()
+                resolved_root = root.resolve()
                 resolved = path.resolve()
-                resolved.relative_to(root)
+                resolved.relative_to(resolved_root)
             except (OSError, ValueError):
                 self.send_error(HTTPStatus.NOT_FOUND)
                 return

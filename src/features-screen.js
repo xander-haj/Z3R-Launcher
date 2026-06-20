@@ -4,11 +4,9 @@
 // Imports: shared escaping for headings and option labels fed by filesystem/repo names.
 import { escapeHtml } from "./shared-utils.js";
 import { appendOptionPicker } from "./features-picker.js";
-import { appendSpritePreview } from "./features-sprite-preview.js";
 
 // Stable zelda3.ini keys owned by this screen.
 const REARRANGE_HUD_KEY = "RearrangeHUD";
-const LINK_GRAPHICS_KEY = "LinkGraphics";
 const SHADER_KEY = "Shader";
 const ENABLE_MSU_KEY = "EnableMSU";
 const MSU_PATH_KEY = "MSUPath";
@@ -79,17 +77,6 @@ function renderFeatures(refs, snapshot, assets, helpers) {
   refs.content.textContent = "";
   renderRearrangeHudToggle(refs.content, snapshot, helpers);
   renderMsuSection(refs, snapshot, assets, helpers);
-  renderSelectableAssetSection(refs, snapshot, assets, helpers, {
-    title: "Link sprite",
-    kind: "sprites",
-    lineKey: LINK_GRAPHICS_KEY,
-    section: "Graphics",
-    lines: snapshot.graphics_lines,
-    group: assets.sprites,
-    sourceUrl: assets.sprites_source_url,
-    cloneLabel: "Clone sprites",
-    applyLabel: "Use sprite",
-  });
   renderSelectableAssetSection(refs, snapshot, assets, helpers, {
     title: "Shader",
     kind: "shaders",
@@ -189,7 +176,7 @@ function renderSelectableAssetSection(refs, snapshot, assets, helpers, config) {
   }
 
   if (config.group.options.length > 0) {
-    const picker = appendOptionPicker(
+    appendOptionPicker(
       section,
       config.group.options,
       config.applyLabel,
@@ -205,10 +192,6 @@ function renderSelectableAssetSection(refs, snapshot, assets, helpers, config) {
       },
       line?.value ?? "",
     );
-
-    if (config.kind === "sprites") {
-      appendSpritePreview(section, picker, helpers);
-    }
 
     if (!line) {
       appendUnavailable(section, `${config.lineKey} will be created in zelda3.ini when applied.`);

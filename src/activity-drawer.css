@@ -10,6 +10,10 @@
 }
 
 .activity-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
   width: 100%;
   min-height: 42px;
   border: 0;
@@ -18,12 +22,32 @@
   text-align: left;
 }
 
-/* Disclosure arrows: ▼ when closed, ▲ when open. */
-.activity-toggle::after {
-  content: " \25BC";
+.activity-toggle-icon {
+  position: relative;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border: 2px solid var(--gold-bright);
+  border-radius: 999px;
+  background: rgba(3, 8, 6, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(244, 196, 97, 0.24);
 }
-.activity-toggle[aria-expanded="true"]::after {
-  content: " \25B2";
+
+.activity-toggle-icon::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 43%;
+  width: 9px;
+  height: 9px;
+  border-right: 3px solid currentColor;
+  border-bottom: 3px solid currentColor;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.activity-toggle[aria-expanded="true"] .activity-toggle-icon::before {
+  top: 57%;
+  transform: translate(-50%, -50%) rotate(225deg);
 }
 
 .activity-panel {
@@ -34,12 +58,36 @@
   display: block;
 }
 
+.activity-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.activity-icon-button svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.activity-update-info {
+  margin: 12px 0 6px;
+  color: var(--gold-bright);
+  font-size: 0.82rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
 /* The launcher's only <pre> is #logOutput inside the activity drawer, so this
    element selector is effectively drawer-scoped in practice. */
 pre {
   max-height: 220px;
   min-height: 150px;
-  margin: 14px 0 0;
+  margin: 0;
   padding: 18px;
   overflow: auto;
   color: #a9bea9;

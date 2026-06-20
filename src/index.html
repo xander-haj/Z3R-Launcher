@@ -235,13 +235,33 @@
 
         <section class="activity-drawer" aria-label="Command output">
           <button id="activityToggle" class="activity-toggle" type="button" aria-expanded="false">
-            Activity
+            <span>Activity</span>
+            <span class="activity-toggle-icon" aria-hidden="true"></span>
           </button>
           <div id="activityPanel" class="activity-panel">
             <div class="activity-heading">
               <p>Command output and setup messages.</p>
-              <button id="clearLogButton" class="secondary-button small" type="button">Clear</button>
+              <div class="activity-actions">
+                <button id="copyLogButton" class="icon-button small activity-icon-button" type="button"
+                  title="Copy console output" aria-label="Copy console output">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="9" y="9" width="11" height="11" rx="2"></rect>
+                    <path d="M5 15V6a1 1 0 0 1 1-1h9"></path>
+                  </svg>
+                </button>
+                <button id="clearLogButton" class="icon-button small activity-icon-button" type="button"
+                  title="Clear console output" aria-label="Clear console output">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3 6h18"></path>
+                    <path d="M8 6V4h8v2"></path>
+                    <path d="M6 6l1 14h10l1-14"></path>
+                    <path d="M10 10v6"></path>
+                    <path d="M14 10v6"></path>
+                  </svg>
+                </button>
+              </div>
             </div>
+            <p id="activityUpdateInfo" class="activity-update-info">Update repo: loading...</p>
             <pre id="logOutput">Ready.</pre>
           </div>
         </section>
