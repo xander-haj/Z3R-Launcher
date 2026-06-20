@@ -1258,14 +1258,12 @@ class LauncherBackend:
         upstream = upstream_ref(project)
         behind = behind_count(project, upstream)
         changes = upstream_changes(project, upstream)
-        dirty = dirty_files(project)
         return {
             "project_path": display_path(project),
             "upstream": upstream,
             "behind_count": behind,
             "changes": changes,
-            "warnings": update_warnings(changes, dirty),
-            "dirty_files": dirty,
+            "warnings": update_warnings(changes),
             "can_apply": bool(changes),
         }
 
@@ -1284,18 +1282,6 @@ class LauncherBackend:
                 raise LauncherError(f"Unsafe repo update path was rejected: {path}")
             if path not in changes_by_path:
                 raise LauncherError(f"Selected file is not in the update preview: {path}")
-        dirty = set(dirty_files(project))
-        conflicting: list[str] = []
-        for path in selected:
-            change = changes_by_path[path]
-            if path in dirty:
-                conflicting.append(path)
-            old_path = change.get("old_path")
-            if old_path and old_path in dirty:
-                conflicting.append(old_path)
-        conflicting = sorted(set(conflicting))
-        if conflicting:
-            return action_result(False, "Selected files have local edits. Back them up or uncheck them before updating.", "\n".join(conflicting))
         applied: list[str] = []
         for path in selected:
             apply_change(project, upstream, changes_by_path[path])
@@ -2885,22 +2871,7 @@ def change_label(status_value: str) -> str:
     return {"A": "Added", "C": "Copied", "D": "Deleted", "M": "Modified", "R": "Renamed", "T": "Type changed"}.get(status_value[:1], "Changed")
 
 
-def dirty_files(project: Path) -> list[str]:
-    output = git_output(project, ["status", "--porcelain"])
-    files: list[str] = []
-    for line in output.splitlines():
-        if len(line) < 4:
-            continue
-        path = line[3:].strip()
-        if " -> " in path:
-            old_path, new_path = path.split(" -> ", 1)
-            files.extend([old_path, new_path])
-        else:
-            files.append(path.strip('"'))
-    return sorted(set(files))
-
-
-def update_warnings(changes: list[dict[str, Any]], dirty: list[str]) -> list[str]:
+def update_warnings(changes: list[dict[str, Any]]) -> list[str]:
     warnings: list[str] = []
     paths: list[str] = []
     for change in changes:
@@ -2908,23 +2879,21 @@ def update_warnings(changes: list[dict[str, Any]], dirty: list[str]) -> list[str
             paths.append(change["old_path"])
         paths.append(change["path"])
     if any(is_zelda_ini_path(path) for path in paths):
-        warnings.append("zelda3.ini changes are included. Back up your ini file before updating.")
+        warnings.append("zelda3.ini changes are included. Back up your ini file before applying this update.")
     if any(repo_path_in_folder(path, "assets") for path in paths):
         warnings.append("Assets changed. Build a fresh zelda3_assets.dat after applying this update.")
-    if any(repo_path_in_folder(path, "src") or repo_path_in_folder(path, "snes") for path in paths):
-        warnings.append("Source changed. Rebuild the game after applying this update.")
-    if dirty:
-        warnings.append("Local repo edits exist. Files with local edits are blocked from update until backed up or unchecked.")
+    if any(repo_path_in_folder(path, "src/snes") for path in paths):
+        warnings.append("src/snes changed. Rebuild the game after applying this update.")
     return warnings
 
 
 def apply_change(project: Path, upstream: str, change: dict[str, Any]) -> None:
     if change["status"].startswith("D"):
-        git_output(project, ["rm", "--quiet", "--ignore-unmatch", "--", change["path"]])
+        git_output(project, ["rm", "--force", "--quiet", "--ignore-unmatch", "--", change["path"]])
         return
     if change["status"].startswith("R") and change.get("old_path") and change["old_path"] != change["path"]:
-        git_output(project, ["rm", "--quiet", "--ignore-unmatch", "--", change["old_path"]])
-    git_output(project, ["checkout", upstream, "--", change["path"]])
+        git_output(project, ["rm", "--force", "--quiet", "--ignore-unmatch", "--", change["old_path"]])
+    git_output(project, ["checkout", "--force", upstream, "--", change["path"]])
 
 
 def change_matches_upstream(project: Path, upstream: str, change: dict[str, Any]) -> bool:
