@@ -24,6 +24,13 @@ from .app_commands import (
     store_rom_upload,
     sync_stored_rom_to_projects,
 )
+from .dev_tool_assets import (
+    clone_dev_tools,
+    install_dev_tool,
+    launch_dev_tool,
+    read_dev_tools,
+    stop_dev_tool,
+)
 from .environment_checks import check_environment
 from .errors import LauncherError
 from .feature_assets import (
@@ -44,10 +51,13 @@ from .randomizer_commands import (
     run_randomizer,
 )
 from .repo_scanner import scan_siblings
-from .repo_update import apply_repo_update, preview_repo_update
+from .repo_update import apply_repo_update, preview_repo_update, rename_zelda_ini_to_user_ini
 from .setup_commands import (
     apply_snesrev_makefile_patch,
     apply_snesrev_solution_patch,
+    build_project,
+    build_project_tcc,
+    build_project_visual_studio,
     clone_custom_project,
     clone_project,
     create_venv,
@@ -57,6 +67,8 @@ from .setup_commands import (
     install_dependencies,
     launch_game,
     open_project_folder,
+    rebuild_project,
+    rebuild_project_visual_studio,
 )
 from .update_downloads import current_update_version
 from .update_installers import install_launcher_update
@@ -91,6 +103,11 @@ class LauncherBackend:
             "extract_assets": extract_assets,
             "extract_assets_visual_studio": extract_assets_visual_studio,
             "extract_assets_tcc": extract_assets_tcc,
+            "build_project": build_project,
+            "build_project_visual_studio": build_project_visual_studio,
+            "build_project_tcc": build_project_tcc,
+            "rebuild_project": rebuild_project,
+            "rebuild_project_visual_studio": rebuild_project_visual_studio,
             "open_external_url": open_external_url,
             "read_feature_assets": read_feature_assets,
             "clone_feature_asset": clone_feature_asset,
@@ -109,6 +126,11 @@ class LauncherBackend:
             "choose_and_store_rom": choose_and_store_rom,
             "open_stored_rom_folder": open_stored_rom_folder,
             "sync_stored_rom_to_projects": sync_stored_rom_to_projects,
+            "read_dev_tools": read_dev_tools,
+            "clone_dev_tools": clone_dev_tools,
+            "install_dev_tool": install_dev_tool,
+            "launch_dev_tool": launch_dev_tool,
+            "stop_dev_tool": stop_dev_tool,
             "read_randomizer_setup": read_randomizer_setup,
             "extract_randomizer_assets": extract_randomizer_assets,
             "run_randomizer": run_randomizer,
@@ -116,6 +138,7 @@ class LauncherBackend:
             "compile_randomized_assets": compile_randomized_assets,
             "preview_repo_update": preview_repo_update,
             "apply_repo_update": apply_repo_update,
+            "rename_zelda_ini_to_user_ini": rename_zelda_ini_to_user_ini,
             "read_zelda_ini": read_zelda_ini,
             "update_zelda_ini_line": update_zelda_ini_line,
             "set_zelda_ini_value": set_zelda_ini_value,

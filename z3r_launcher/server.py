@@ -14,6 +14,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Callable
 
 from .backend import LauncherBackend, LauncherError, app_data_dir, open_external_url, static_dir
+from .dev_tool_proxy import dev_tool_proxy_target, proxy_dev_tool_request
 from .platform_paths import link_sprite_devtools_dir
 
 
@@ -91,6 +92,10 @@ def make_handler(state: ServerState, backend: LauncherBackend) -> type[BaseHTTPR
             if parsed.path == "/api/ping":
                 self.handle_ping()
                 return
+            if dev_tool_proxy_target(parsed.path):
+                state.touch()
+                proxy_dev_tool_request(self, parsed, MAX_REQUEST_BYTES)
+                return
             self.serve_static(parsed)
 
         def do_POST(self) -> None:
@@ -103,6 +108,10 @@ def make_handler(state: ServerState, backend: LauncherBackend) -> type[BaseHTTPR
                 return
             if parsed.path == "/api/shutdown":
                 self.handle_shutdown()
+                return
+            if dev_tool_proxy_target(parsed.path):
+                state.touch()
+                proxy_dev_tool_request(self, parsed, MAX_REQUEST_BYTES)
                 return
             self.write_json({"error": "Not found."}, status=HTTPStatus.NOT_FOUND)
 

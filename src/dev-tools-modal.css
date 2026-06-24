@@ -1,0 +1,169 @@
+.dev-tools-dialog {
+  width: min(820px, calc(100vw - 48px));
+}
+
+.dev-tools-form {
+  display: grid;
+  gap: 18px;
+}
+
+.dev-tools-heading {
+  display: grid;
+  gap: 6px;
+}
+
+.dev-tools-status {
+  min-height: 1.4rem;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.dev-tools-list {
+  display: grid;
+  gap: 10px;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.dev-tool-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-height: 58px;
+  padding: 12px 14px;
+  border: 1px solid rgba(209, 154, 50, 0.45);
+  border-radius: var(--radius);
+  background: rgba(10, 31, 18, 0.72);
+}
+
+.dev-tool-row input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--gold);
+}
+
+.dev-tool-row span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.dev-tool-row strong {
+  color: var(--text);
+}
+
+.dev-tool-row small {
+  color: var(--muted);
+}
+
+.dev-tools-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: end;
+  gap: 12px;
+}
+
+.dev-tool-runner-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  height: 100vh;
+  padding: 0;
+  overflow: hidden;
+  background: #000;
+}
+
+.dev-tool-frame {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+}
+
+.dev-tool-home-zone {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1001;
+  width: 86px;
+  height: 86px;
+}
+
+.dev-tool-home-button {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  min-height: 46px;
+  padding: 0;
+  border: 2px solid rgba(244, 196, 97, 0.78);
+  border-radius: 999px;
+  opacity: 0;
+  pointer-events: none;
+  background: rgba(3, 8, 6, 0.82);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
+}
+
+.dev-tool-home-button svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: var(--gold-bright);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dev-tool-home-zone:hover .dev-tool-home-button,
+.dev-tool-home-zone:focus-within .dev-tool-home-button,
+.dev-tool-home-zone.revealed .dev-tool-home-button {
+  opacity: 0.94;
+  pointer-events: auto;
+}
+
+.dev-tool-exit-button {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 1001;
+  width: 42px;
+  min-height: 42px;
+  padding: 0;
+  border: 2px solid rgba(244, 196, 97, 0.72);
+  border-radius: 999px;
+  opacity: 0;
+  background: rgba(3, 8, 6, 0.78);
+}
+
+.dev-tool-exit-button::before,
+.dev-tool-exit-button::after {
+  content: "";
+  position: absolute;
+  left: 11px;
+  top: 18px;
+  width: 17px;
+  height: 3px;
+  background: var(--gold-bright);
+}
+
+.dev-tool-exit-button::before {
+  transform: rotate(45deg);
+}
+
+.dev-tool-exit-button::after {
+  transform: rotate(-45deg);
+}
+
+.dev-tool-exit-button:hover,
+.dev-tool-exit-button:focus-visible {
+  opacity: 0.88;
+}

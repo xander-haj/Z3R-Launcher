@@ -106,7 +106,9 @@ function buildProjectCard(candidate, helpers) {
     patchButton: sourcePatchButtonMarkup(candidate, isPlayable),
     repoButton: repoButtonMarkup(candidate, isPlayable),
     disabledUntilPlayable: disabledUntilPlayableAttribute(isPlayable),
+    modsButtonAttributes: modsCategoryButtonAttributes(candidate),
     linkSpriteAttributes: linkSpriteButtonAttributes(candidate),
+    devToolButtons: devToolButtonsMarkup(candidate),
   });
 
   wireCardButtons(card, candidate, helpers);
@@ -140,7 +142,9 @@ function buildCardMarkup({
   patchButton,
   repoButton,
   disabledUntilPlayable,
+  modsButtonAttributes,
   linkSpriteAttributes,
+  devToolButtons,
 }) {
   return `
     <span class="status ${statusClass}">${statusLabel}</span>
@@ -162,12 +166,13 @@ function buildCardMarkup({
             type="button"
             data-card-menu="mods"
             aria-expanded="false"
-            ${linkSpriteAttributes}
+            ${modsButtonAttributes}
           >Mods</button>
           <div class="card-action-menu" data-card-menu="mods" hidden>
             <button class="secondary-button link-sprite-button" type="button" ${linkSpriteAttributes}>
               Link Sprite
             </button>
+            ${devToolButtons}
           </div>
         </div>
         <div class="card-category-menu-wrap">
@@ -227,6 +232,15 @@ function wireCardButtons(card, candidate, helpers) {
     await selectProject(candidate.path);
     showView("link-sprite");
   });
+
+  for (const button of card.querySelectorAll(".dev-tool-button")) {
+    button.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      closeAllCardMenus();
+      await selectProject(candidate.path);
+      await helpers.openDevTool(candidate.path, button.dataset.devToolId);
+    });
+  }
 
   card.querySelector(".features-button").addEventListener("click", async (event) => {
     event.stopPropagation();
@@ -326,6 +340,22 @@ function linkSpriteButtonAttributes(candidate) {
   return candidate.link_sprite_editor_available
     ? ""
     : 'disabled title="assets/sprite_sheets.py was not found"';
+}
+
+function modsCategoryButtonAttributes(candidate) {
+  return candidate.link_sprite_editor_available || (candidate.dev_tools?.length ?? 0) > 0
+    ? ""
+    : 'disabled title="No installed mod tools are available"';
+}
+
+function devToolButtonsMarkup(candidate) {
+  return (candidate.dev_tools ?? [])
+    .map((tool) => `
+      <button class="secondary-button dev-tool-button" type="button" data-dev-tool-id="${escapeHtml(tool.id)}">
+        ${escapeHtml(tool.label)}
+      </button>
+    `)
+    .join("");
 }
 
 function sourcePatchButtonMarkup(candidate, isPlayable) {

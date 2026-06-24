@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from dev_tools.link_sprite_editor.zspr import parse_zspr_preview
+from dev_tools.link_sprite_editor.zspr import parse_zspr_metadata, parse_zspr_preview
 
 from .constants import MSU_DIR, MSU_DOWNLOAD_URL, SHADERS_DIR, SHADERS_SOURCE_URL, SPRITES_DIR, SPRITES_SOURCE_URL
 from .errors import LauncherError
@@ -28,8 +28,8 @@ def read_feature_assets(project_path: str) -> dict[str, Any]:
             list_msu_options(storage / MSU_DIR, "shared", False),
         ),
         "sprites": build_group(
-            list_file_options(project / SPRITES_DIR, SPRITES_DIR, ["zspr"], "project"),
-            list_file_options(storage / SPRITES_DIR, SPRITES_DIR, ["zspr"], "shared"),
+            list_sprite_options(project / SPRITES_DIR, SPRITES_DIR, "project"),
+            list_sprite_options(storage / SPRITES_DIR, SPRITES_DIR, "shared"),
         ),
         "shaders": build_group(
             list_file_options(project / SHADERS_DIR, SHADERS_DIR, ["glsl", "glslp"], "project"),
@@ -92,8 +92,11 @@ def read_sprite_preview(project_path: str, sprite_path: str) -> dict[str, Any]:
     except OSError as error:
         raise LauncherError(f"Could not read sprite {display_path(sprite)}: {error}") from error
     pixel_data, palette_data = parse_zspr_preview(bytes_data)
+    metadata = read_sprite_metadata(sprite)
     return {
-        "label": sprite.stem or display_path(relative),
+        "label": metadata["display_text"] or sprite.stem or display_path(relative),
+        "author": metadata["author"],
+        "author_rom_display": metadata["author_rom_display"],
         "pixel_data": list(pixel_data),
         "palette_data": list(palette_data),
     }
@@ -131,7 +134,11 @@ def path_to_slash(path: Path) -> str:
 
 
 def sanitize_folder_name(name: str) -> str:
-    return "".join(character for character in name if character.isascii() and (character.isalnum() or character in "-_"))
+    return "".join(
+        character
+        for character in name
+        if character.isascii() and (character.isalnum() or character in "-_")
+    )
 
 
 def build_group(project_options: list[dict[str, str]], shared_options: list[dict[str, str]]) -> dict[str, Any]:
@@ -153,6 +160,31 @@ def list_file_options(base_dir: Path, value_root: str, extensions: list[str], so
         value = path_to_slash(Path(value_root) / relative)
         options.append({"label": path.stem or value, "value": value, "source": source})
     return options
+
+
+def list_sprite_options(base_dir: Path, value_root: str, source: str) -> list[dict[str, str]]:
+    files = sorted(collect_files(base_dir, ["zspr"]))
+    options: list[dict[str, str]] = []
+    for path in files:
+        relative = path.relative_to(base_dir)
+        value = path_to_slash(Path(value_root) / relative)
+        metadata = read_sprite_metadata(path)
+        label = metadata["display_text"] or path.stem or value
+        options.append({
+            "label": label,
+            "value": value,
+            "source": source,
+            "author": metadata["author"],
+            "author_rom_display": metadata["author_rom_display"],
+        })
+    return options
+
+
+def read_sprite_metadata(path: Path) -> dict[str, str]:
+    try:
+        return parse_zspr_metadata(path.read_bytes())
+    except (LauncherError, OSError):
+        return {"display_text": "", "author": "", "author_rom_display": ""}
 
 
 def list_msu_options(root: Path, source: str, include_root_pack: bool) -> list[dict[str, str]]:
@@ -219,7 +251,11 @@ def store_msu_sources(sources: list[Path]) -> dict[str, Any]:
             destination.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, destination / source.name)
             copied += 1
-    return action_result(True, f"Stored MSU pack {pack_name}.", f"{copied} file(s) copied to {display_path(destination)}")
+    return action_result(
+        True,
+        f"Stored MSU pack {pack_name}.",
+        f"{copied} file(s) copied to {display_path(destination)}",
+    )
 
 
 def msu_pack_name(sources: list[Path]) -> str:
@@ -272,7 +308,11 @@ def install_shader_asset(project: Path, storage: Path, asset_value: str) -> dict
 def install_msu_asset(project: Path, storage: Path, asset_value: str) -> dict[str, Any]:
     relative = safe_relative_path(asset_value)
     if msu_prefix_exists(project, asset_value):
-        return installed_msu_result("MSU pack already exists in the selected build.", relative, msu_mode_for_prefix(project, asset_value))
+        return installed_msu_result(
+            "MSU pack already exists in the selected build.",
+            relative,
+            msu_mode_for_prefix(project, asset_value),
+        )
     parts = relative.parts
     if len(parts) < 2:
         raise LauncherError("Selected MSU path did not include a pack folder.")
@@ -282,7 +322,11 @@ def install_msu_asset(project: Path, storage: Path, asset_value: str) -> dict[st
     if not source.is_dir():
         raise LauncherError(f"Selected MSU pack was not found in shared storage: {display_path(source)}")
     copy_dir_contents(source, destination)
-    return installed_msu_result("MSU pack copied into the selected build.", relative, msu_mode_for_prefix(project, asset_value))
+    return installed_msu_result(
+        "MSU pack copied into the selected build.",
+        relative,
+        msu_mode_for_prefix(project, asset_value),
+    )
 
 
 def installed_result(message: str, relative: Path) -> dict[str, Any]:

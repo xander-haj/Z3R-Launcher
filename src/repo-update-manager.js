@@ -21,6 +21,9 @@ export function connectRepoUpdateManager(helpers) {
     });
     helpers.log(result.message);
   });
+  elements.repoUpdateRenameIniButton.addEventListener("click", async () => {
+    await renameIniForRepoUpdate(helpers);
+  });
   elements.repoUpdateApplyButton.addEventListener("click", async () => {
     await applySelectedRepoChanges(helpers);
   });
@@ -41,6 +44,8 @@ async function openRepoUpdate(candidate, helpers) {
   elements.repoUpdateSummary.textContent = "Fetching upstream changes...";
   elements.repoUpdateFileList.textContent = "";
   elements.repoUpdateApplyButton.disabled = true;
+  elements.repoUpdateRenameIniButton.classList.add("hidden");
+  elements.repoUpdateRenameIniButton.disabled = true;
 
   if (!elements.repoUpdateDialog.open) {
     elements.repoUpdateDialog.showModal();
@@ -68,6 +73,8 @@ function renderRepoPreview(preview, helpers) {
     item.textContent = warning;
     elements.repoUpdateWarnings.append(item);
   }
+
+  renderIniRenameButton(preview, helpers);
 
   if ((preview.changes ?? []).length === 0) {
     elements.repoUpdateSummary.textContent = preview.upstream
@@ -97,6 +104,37 @@ function renderRepoPreview(preview, helpers) {
   }
 
   elements.repoUpdateApplyButton.disabled = !preview.can_apply;
+}
+
+function renderIniRenameButton(preview, helpers) {
+  const { elements } = helpers;
+  const showButton = Boolean(preview.ini_update_available);
+  elements.repoUpdateRenameIniButton.classList.toggle("hidden", !showButton);
+  elements.repoUpdateRenameIniButton.disabled = !preview.can_rename_ini;
+  elements.repoUpdateRenameIniButton.title = preview.can_rename_ini
+    ? "Rename zelda3.ini to zelda3.user.ini before applying the update."
+    : "zelda3.ini is missing or zelda3.user.ini already exists.";
+}
+
+async function renameIniForRepoUpdate(helpers) {
+  const { state, elements } = helpers;
+  if (!state.repoUpdateProject) {
+    return;
+  }
+
+  elements.repoUpdateRenameIniButton.disabled = true;
+
+  try {
+    const result = await helpers.call("rename_zelda_ini_to_user_ini", {
+      projectPath: state.repoUpdateProject.path,
+    });
+    helpers.log(result.message);
+    await helpers.refreshScan();
+    await openRepoUpdate(state.repoUpdateProject, helpers);
+  } catch (error) {
+    helpers.log(`Could not rename zelda3.ini: ${error}`);
+    elements.repoUpdateRenameIniButton.disabled = false;
+  }
 }
 
 async function applySelectedRepoChanges(helpers) {

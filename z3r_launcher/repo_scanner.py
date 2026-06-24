@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from .dev_tool_assets import installed_dev_tools
 from .errors import LauncherError
 from .platform_paths import display_path, is_windows, resolve_scan_root
 from .project_files import (
@@ -104,6 +105,7 @@ def inspect_candidate(path: Path, owner: str | None) -> dict[str, Any] | None:
         "snesrev_solution_patch_applied": solution_applied,
         "source_patch_needed": source_patch_for_platform(is_snesrev, has_solution, makefile_applied, solution_applied),
         "link_sprite_editor_available": (path / "assets" / "sprite_sheets.py").is_file(),
+        "dev_tools": installed_dev_tools(path),
         "status": status,
         "notes": notes,
     }

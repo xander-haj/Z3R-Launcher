@@ -15,12 +15,15 @@ def preview_repo_update(project_path: str) -> dict[str, Any]:
     upstream = upstream_ref(project)
     behind = behind_count(project, upstream)
     changes = upstream_changes(project, upstream)
+    paths = changed_paths(changes)
     return {
         "project_path": display_path(project),
         "upstream": upstream,
         "behind_count": behind,
         "changes": changes,
         "warnings": update_warnings(changes),
+        "ini_update_available": any(is_zelda_ini_path(path) for path in paths),
+        "can_rename_ini": (project / "zelda3.ini").is_file() and not (project / "zelda3.user.ini").exists(),
         "can_apply": bool(changes),
     }
 
@@ -45,6 +48,18 @@ def apply_repo_update(project_path: str, selected_files: list[str]) -> dict[str,
         apply_change(project, upstream, changes_by_path[path])
         applied.append(path)
     return action_result(True, "Selected repo changes applied.", "\n".join(applied))
+
+
+def rename_zelda_ini_to_user_ini(project_path: str) -> dict[str, Any]:
+    project = repo_project_path(project_path)
+    source = project / "zelda3.ini"
+    destination = project / "zelda3.user.ini"
+    if not source.is_file():
+        raise LauncherError("zelda3.ini was not found in the selected repo.")
+    if destination.exists():
+        raise LauncherError("zelda3.user.ini already exists. Rename or move it before using this shortcut.")
+    source.rename(destination)
+    return action_result(True, f"Renamed zelda3.ini to {destination.name}.")
 
 
 def repo_project_path(project_path: str) -> Path:
@@ -130,19 +145,24 @@ def change_label(status_value: str) -> str:
 
 
 def update_warnings(changes: list[dict[str, Any]]) -> list[str]:
-    paths: list[str] = []
-    for change in changes:
-        if change.get("old_path"):
-            paths.append(change["old_path"])
-        paths.append(change["path"])
+    paths = changed_paths(changes)
     warnings: list[str] = []
     if any(is_zelda_ini_path(path) for path in paths):
         warnings.append("zelda3.ini changes are included. Back up your ini file before applying this update.")
     if any(repo_path_in_folder(path, "assets") for path in paths):
         warnings.append("Assets changed. Build a fresh zelda3_assets.dat after applying this update.")
-    if any(repo_path_in_folder(path, "src/snes") for path in paths):
-        warnings.append("src/snes changed. Rebuild the game after applying this update.")
+    if any(not repo_path_in_folder(path, "assets") for path in paths):
+        warnings.append("Non-asset project files changed. Rebuild the project after applying this update.")
     return warnings
+
+
+def changed_paths(changes: list[dict[str, Any]]) -> list[str]:
+    paths: list[str] = []
+    for change in changes:
+        if change.get("old_path"):
+            paths.append(change["old_path"])
+        paths.append(change["path"])
+    return paths
 
 
 def apply_change(project: Path, upstream: str, change: dict[str, Any]) -> None:

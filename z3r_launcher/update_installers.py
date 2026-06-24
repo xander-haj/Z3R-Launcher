@@ -39,8 +39,15 @@ def install_launcher_update(schedule_exit: Callable[[], None], allow_downgrade: 
     update_dir.mkdir(parents=True, exist_ok=True)
     release = fetch_latest_release(update_dir)
     ordering = compare_versions(release["tag_name"], current_version)
-    if ordering < 0 and not allow_downgrade:
-        return downgrade_confirmation_result(current_version, release["tag_name"])
+    dev_update_source = is_dev_update_source(release)
+    if ordering < 0:
+        if dev_update_source and not allow_downgrade:
+            return downgrade_confirmation_result(current_version, release["tag_name"])
+        if not dev_update_source:
+            return action_result(
+                True,
+                public_up_to_date_message(current_version, release["tag_name"]),
+            )
     if ordering == 0:
         return action_result(True, f"Launcher is already up to date ({current_version}).")
     if is_flatpak_runtime():
@@ -70,18 +77,41 @@ def downgrade_confirmation_result(current_version: str, release_version: str) ->
     return result
 
 
-def install_windows_update(release: dict[str, Any], update_dir: Path, schedule_exit: Callable[[], None]) -> dict[str, Any]:
+def is_dev_update_source(release: dict[str, Any]) -> bool:
+    source = release.get("_launcher_update_source")
+    return isinstance(source, dict) and bool(source.get("dev_override"))
+
+
+def public_up_to_date_message(current_version: str, release_version: str) -> str:
+    return (
+        f"Launcher is already up to date ({current_version}). "
+        f"Latest public release is {release_version}."
+    )
+
+
+def install_windows_update(
+    release: dict[str, Any],
+    update_dir: Path,
+    schedule_exit: Callable[[], None],
+) -> dict[str, Any]:
     asset = exact_asset(release, "Z3R-Launcher-windows-x64.exe")
     downloaded_exe = download_release_asset(asset, update_dir)
     script_path = update_dir / "apply-windows-update.ps1"
     log_path = update_dir / "apply-windows-update.log"
     target_path = current_executable_path()
     write_windows_update_script(script_path)
-    subprocess.Popen([
-        "powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script_path),
-        "-LauncherPid", str(os.getpid()), "-Downloaded", str(downloaded_exe), "-Target", str(target_path),
-        "-Relaunch", str(target_path), "-Log", str(log_path),
-    ], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=command_env(), **hidden_subprocess_kwargs())
+    subprocess.Popen(
+        [
+            "powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script_path),
+            "-LauncherPid", str(os.getpid()), "-Downloaded", str(downloaded_exe),
+            "-Target", str(target_path), "-Relaunch", str(target_path), "-Log", str(log_path),
+        ],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        env=command_env(),
+        **hidden_subprocess_kwargs(),
+    )
     schedule_exit()
     return action_result(
         True,
@@ -90,7 +120,11 @@ def install_windows_update(release: dict[str, Any], update_dir: Path, schedule_e
     )
 
 
-def install_macos_update(release: dict[str, Any], update_dir: Path, schedule_exit: Callable[[], None]) -> dict[str, Any]:
+def install_macos_update(
+    release: dict[str, Any],
+    update_dir: Path,
+    schedule_exit: Callable[[], None],
+) -> dict[str, Any]:
     bundle_path = current_macos_bundle_path()
     asset = first_release_asset(release, [macos_update_asset_name(), "Z3R-Launcher-macos-universal.dmg"])
     dmg_path = download_release_asset(asset, update_dir)
@@ -100,20 +134,39 @@ def install_macos_update(release: dict[str, Any], update_dir: Path, schedule_exi
     app_name = bundle_path.name
     write_macos_update_script(script_path)
     make_executable(script_path)
-    subprocess.Popen([
-        "/bin/sh", str(script_path), str(os.getpid()), str(dmg_path), str(mount_path),
-        str(bundle_path), app_name, str(log_path),
-    ], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=command_env(), **hidden_subprocess_kwargs())
+    subprocess.Popen(
+        [
+            "/bin/sh", str(script_path), str(os.getpid()), str(dmg_path), str(mount_path),
+            str(bundle_path), app_name, str(log_path),
+        ],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        env=command_env(),
+        **hidden_subprocess_kwargs(),
+    )
     schedule_exit()
-    return action_result(True, f"Launcher update {release['tag_name']} downloaded. The launcher will close, replace the app bundle, and reopen.", f"Updater log: {display_path(log_path)}")
+    return action_result(
+        True,
+        f"Launcher update {release['tag_name']} downloaded. "
+        "The launcher will close, replace the app bundle, and reopen.",
+        f"Updater log: {display_path(log_path)}",
+    )
 
 
-def install_flatpak_update(release: dict[str, Any], update_dir: Path, schedule_exit: Callable[[], None]) -> dict[str, Any]:
+def install_flatpak_update(
+    release: dict[str, Any],
+    update_dir: Path,
+    schedule_exit: Callable[[], None],
+) -> dict[str, Any]:
     asset = exact_asset(release, "Z3R-Launcher-linux.flatpak")
     bundle = download_release_asset(asset, update_dir)
     output = run_process(
         "flatpak-spawn",
-        ["--host", "flatpak", "install", flatpak_install_scope_arg(), "--or-update", "--assumeyes", "--noninteractive", display_path(bundle)],
+        [
+            "--host", "flatpak", "install", flatpak_install_scope_arg(), "--or-update",
+            "--assumeyes", "--noninteractive", display_path(bundle),
+        ],
         capture=True,
     )
     if output.returncode != 0:
@@ -129,7 +182,11 @@ def install_flatpak_update(release: dict[str, Any], update_dir: Path, schedule_e
     )
 
 
-def install_appimage_update(release: dict[str, Any], update_dir: Path, schedule_exit: Callable[[], None]) -> dict[str, Any]:
+def install_appimage_update(
+    release: dict[str, Any],
+    update_dir: Path,
+    schedule_exit: Callable[[], None],
+) -> dict[str, Any]:
     current_appimage = current_appimage_path()
     asset = exact_asset(release, "Z3R-Launcher-linux-x64.AppImage")
     downloaded_appimage = download_release_asset(asset, update_dir)
@@ -137,11 +194,24 @@ def install_appimage_update(release: dict[str, Any], update_dir: Path, schedule_
     log_path = update_dir / "apply-appimage-update.log"
     write_appimage_update_script(script_path)
     make_executable(script_path)
-    subprocess.Popen([
-        "/bin/sh", str(script_path), str(os.getpid()), str(downloaded_appimage), str(current_appimage), str(log_path),
-    ], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=command_env(), **hidden_subprocess_kwargs())
+    subprocess.Popen(
+        [
+            "/bin/sh", str(script_path), str(os.getpid()), str(downloaded_appimage),
+            str(current_appimage), str(log_path),
+        ],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        env=command_env(),
+        **hidden_subprocess_kwargs(),
+    )
     schedule_exit()
-    return action_result(True, f"Launcher update {release['tag_name']} downloaded. The launcher will close, replace the AppImage, and reopen.", f"Updater log: {display_path(log_path)}")
+    return action_result(
+        True,
+        f"Launcher update {release['tag_name']} downloaded. "
+        "The launcher will close, replace the AppImage, and reopen.",
+        f"Updater log: {display_path(log_path)}",
+    )
 
 
 def macos_update_asset_name() -> str:
@@ -168,8 +238,15 @@ def flatpak_install_scope_arg() -> str:
 
 
 def spawn_flatpak_relaunch() -> None:
-    subprocess.Popen([
-        "flatpak-spawn", "--host", "sh", "-c",
-        'while kill -0 "$1" 2>/dev/null; do sleep 1; done; flatpak run "$2"',
-        "z3r-launcher-flatpak-relaunch", str(os.getpid()), APP_ID,
-    ], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=command_env(), **hidden_subprocess_kwargs())
+    subprocess.Popen(
+        [
+            "flatpak-spawn", "--host", "sh", "-c",
+            'while kill -0 "$1" 2>/dev/null; do sleep 1; done; flatpak run "$2"',
+            "z3r-launcher-flatpak-relaunch", str(os.getpid()), APP_ID,
+        ],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        env=command_env(),
+        **hidden_subprocess_kwargs(),
+    )

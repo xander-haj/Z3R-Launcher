@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="./scan-path-manager.css" />
     <link rel="stylesheet" href="./randomizer-setup.css" />
     <link rel="stylesheet" href="./dev-settings.css" />
+    <link rel="stylesheet" href="./dev-tools-modal.css" />
   </head>
   <body>
     <main class="shell">
@@ -54,10 +55,15 @@
                 <button id="venvButton" class="route-button" type="button">Create venv</button>
                 <button id="dependenciesButton" class="route-button" type="button">Install dependencies</button>
                 <button id="extractButton" class="route-button" type="button">Build assets</button>
-                <button id="extractVisualStudioButton" class="route-button hidden" type="button">
-                  Build assets Visual Studio
+                <button id="buildProjectButton" class="route-button hidden" type="button">Build project</button>
+                <button id="rebuildProjectButton" class="route-button hidden" type="button">re-build project</button>
+                <button id="buildVisualStudioButton" class="route-button hidden" type="button">
+                  Build project (MSBuild)
                 </button>
-                <button id="extractTccButton" class="route-button hidden" type="button">Build assets TCC</button>
+                <button id="rebuildVisualStudioButton" class="route-button hidden" type="button">
+                  Rebuild project (MSBuild)
+                </button>
+                <button id="buildTccButton" class="route-button hidden" type="button">Build project (TCC)</button>
                 <div class="environment-play-stack">
                   <button id="environmentPlayButton" class="route-button" type="button" disabled>Play</button>
                   <span id="environmentPlayableBadge" class="status ready hidden">Game playable</span>
@@ -335,6 +341,7 @@
         <div id="repoUpdateFileList" class="repo-update-file-list" aria-label="Repo update files"></div>
         <div class="scan-path-actions repo-update-actions">
           <button id="repoUpdateOpenFolderButton" class="secondary-button" type="button">Open Folder</button>
+          <button id="repoUpdateRenameIniButton" class="secondary-button hidden" type="button">Rename ini</button>
           <button id="repoUpdateRefreshButton" class="secondary-button" type="button">Refresh</button>
           <button id="repoUpdateApplyButton" class="primary-button" type="button">Apply Selected</button>
           <button id="repoUpdateCloseButton" class="secondary-button" type="button">Close</button>

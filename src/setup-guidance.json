@@ -4,7 +4,8 @@
     "Press the Create venv button.",
     "After venv activation, press the install dependencies button",
     "Install a C compiler and SDL2 development files with your OS package manager before building.",
-    "Press the Build assets button to extract assets, compile zelda3_assets.dat, and build the executable.",
+    "Press the Build assets button to extract assets and compile zelda3_assets.dat.",
+    "Press Build project to build the executable, or press re-build project to clean and rebuild it.",
     "When it finishes, go back to the home menu to Play or Randomize."
   ],
   "windows": [
@@ -13,7 +14,9 @@
     "Press the Create venv button.",
     "After venv activation, press the install dependencies button",
     "Use Visual Studio Build Tools with Desktop development with C++ or the TCC package route before building.",
-    "Press Build assets TCC, or press Build assets Visual Studio when MSBuild is detected.",
+    "Press Build assets to extract assets and compile zelda3_assets.dat.",
+    "Press Build project (MSBuild) to build the executable, or Rebuild project (MSBuild) to run the MSBuild rebuild target.",
+    "If you use the TCC route, press Build project (TCC).",
     "When it finishes, go back to the home menu to Play or Randomize."
   ],
   "linux": [
@@ -21,7 +24,8 @@
     "Press the Create venv button. On Debian/Ubuntu, install venv support first if Python asks for python3-venv.",
     "After venv activation, press the install dependencies button",
     "Make sure the C compiler check is OK, then install SDL2 development files before building. On apt-based Linux/Unix systems, use `sudo apt-get install libsdl2-dev`.",
-    "Press the Build assets button to extract assets, compile zelda3_assets.dat, and build the executable.",
+    "Press the Build assets button to extract assets and compile zelda3_assets.dat.",
+    "Press Build project to build the executable, or press re-build project to clean and rebuild it.",
     "When it finishes, go back to the home menu to Play or Randomize."
   ],
   "linux_packaged": [

@@ -26,12 +26,12 @@ from .processes import (
     run_command,
     run_process,
 )
+from .project_shell import run_project_shell_command
 from .project_files import (
     apply_windows_solution_patch_to_project,
     copy_dir_contents,
     copy_stored_rom_to_project,
     is_snesrev_zelda3_project,
-    join_stage_output,
     resource_text,
     venv_python,
 )
@@ -147,11 +147,33 @@ def extract_assets_with_route(project_path: str, route: str) -> dict[str, Any]:
     if uses_downloaded_linux_game_executable():
         download = install_prebuilt_linux_game_executable(project)
         return combine_results("Asset extraction and executable download complete.", extract, download)
-    build = build_executable(project, route)
-    stdout = join_stage_output(extract["stdout"], build["stdout"])
-    stderr = join_stage_output(extract["stderr"], build["stderr"])
-    message = "Asset extraction and build complete." if build["ok"] else f"Build step failed after asset extraction: {build['message']}"
-    return action_result(build["ok"], message, stdout, stderr)
+    return extract
+
+
+def build_project(project_path: str) -> dict[str, Any]:
+    project = Path(project_path)
+    if is_windows():
+        return run_visual_studio_build(project)
+    return run_project_shell_command("make -j$(nproc)", project, "Project build complete.")
+
+
+def rebuild_project(project_path: str) -> dict[str, Any]:
+    project = Path(project_path)
+    if is_windows():
+        return run_visual_studio_build(project, rebuild=True)
+    return run_project_shell_command("make clean && make -j$(nproc)", project, "Project rebuild complete.")
+
+
+def build_project_visual_studio(project_path: str) -> dict[str, Any]:
+    return run_visual_studio_build(Path(project_path))
+
+
+def rebuild_project_visual_studio(project_path: str) -> dict[str, Any]:
+    return run_visual_studio_build(Path(project_path), rebuild=True)
+
+
+def build_project_tcc(project_path: str) -> dict[str, Any]:
+    return run_tcc_build(Path(project_path))
 
 
 def build_executable(project: Path, route: str) -> dict[str, Any]:
@@ -247,13 +269,17 @@ def linux_venv_support_message(version_package: str) -> str:
     )
 
 
-def run_visual_studio_build(project: Path) -> dict[str, Any]:
+def run_visual_studio_build(project: Path, rebuild: bool = False) -> dict[str, Any]:
     if is_snesrev_zelda3_project(project, None):
         apply_windows_solution_patch_to_project(project)
     msbuild = find_msbuild()
     if not msbuild:
         raise LauncherError("MSBuild was not found. Install Build Tools for Visual Studio or use the TCC route.")
-    return run_command(display_path(msbuild), ["Zelda3.sln", "/restore", "/p:RestorePackagesConfig=true", "/p:Configuration=Release", "/p:Platform=x64"], project, "Visual Studio build complete.")
+    args = ["Zelda3.sln", "/restore", "/p:RestorePackagesConfig=true", "/p:Configuration=Release", "/p:Platform=x64"]
+    if rebuild:
+        args.insert(1, "/t:Rebuild")
+    message = "Visual Studio rebuild complete." if rebuild else "Visual Studio build complete."
+    return run_command(display_path(msbuild), args, project, message)
 
 
 def run_tcc_build(project: Path) -> dict[str, Any]:

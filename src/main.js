@@ -9,10 +9,11 @@ import { connectEnvironmentScreen } from "./environment-screen.js";
 import { connectControlsScreen } from "./controls-screen.js";
 import { connectFeaturesScreen } from "./features-screen.js";
 import { connectLinkSpriteEditor } from "./link-sprite-editor.js";
-import { checksReady, updateEnvironmentActions } from "./environment-actions.js";
+import { connectEnvironmentSetupActions } from "./environment-setup-actions.js";
 import { connectRepoUpdateManager } from "./repo-update-manager.js";
 import { connectLauncherUpdateChecker } from "./launcher-update-checker.js";
 import { connectDevSettings } from "./dev-settings.js";
+import { connectDevTools } from "./dev-tools-modal.js";
 import { collectAppElements } from "./app-elements.js";
 import { createActivityDrawer } from "./activity-drawer.js";
 import { createRomUploader } from "./rom-upload.js";
@@ -71,7 +72,7 @@ async function openExternalUrl(url) {
 // because they operate on ROM storage, scan paths, or new project folders.
 function showView(view) {
   state.activeView = view;
-  for (const panel of elements.viewPanels) {
+  for (const panel of document.querySelectorAll(".view-panel")) {
     panel.classList.toggle("active", panel.dataset.view === view);
   }
   const onHome = view === "builds";
@@ -139,48 +140,6 @@ async function runAction(command, payload = {}, options = {}) {
   return result;
 }
 
-async function runSetupAction(command, payload, requiredCheckIds) {
-  if (!payload) {
-    return;
-  }
-
-  await environmentScreen.runChecks();
-
-  if (!checksReady(state.environmentChecks, requiredCheckIds)) {
-    log("This setup step is blocked until the required checks are OK.");
-    return;
-  }
-
-  state.environmentActionRunning = true;
-  updateEnvironmentActions(elements, state.environmentChecks, {
-    actionRunning: true,
-    hasSelectedProject: Boolean(state.selectedPath),
-    failedSetupStep: state.failedSetupStep,
-  });
-
-  try {
-    const result = await runAction(command, payload, { refreshOnFailure: false });
-
-    if (!result.ok) {
-      state.failedSetupStep = command;
-      log("Fix the failed setup step before continuing.");
-    } else {
-      state.failedSetupStep = null;
-    }
-  } catch (error) {
-    state.failedSetupStep = command;
-    log("Fix the failed setup step before continuing.");
-    await environmentScreen.runChecks();
-  } finally {
-    state.environmentActionRunning = false;
-    updateEnvironmentActions(elements, state.environmentChecks, {
-      actionRunning: false,
-      hasSelectedProject: Boolean(state.selectedPath),
-      failedSetupStep: state.failedSetupStep,
-    });
-  }
-}
-
 // Guard used by setup buttons that require a selected project — logs a hint and
 // returns null so the calling handler can short-circuit cleanly.
 function selectedProjectPayload() {
@@ -190,14 +149,6 @@ function selectedProjectPayload() {
   }
 
   return { projectPath: state.selectedPath };
-}
-
-function extractAssetRequiredCheckIds() {
-  const packagedLinuxDownload = Boolean(state.runtimeInfo?.downloaded_linux_game_executable);
-  const baseIds = ["python", "venv", "python-dependencies", "rom"];
-  return packagedLinuxDownload
-    ? [...baseIds, "game-executable-download"]
-    : [...baseIds, "make", "c-compiler", "sdl2-dev"];
 }
 
 // Re-runs the backend sibling scan, keeps the selected project alive when it still
@@ -283,6 +234,8 @@ const featuresScreen = connectFeaturesScreen(helpers);
 const linkSpriteEditor = connectLinkSpriteEditor(helpers);
 const repoUpdateManager = connectRepoUpdateManager(helpers);
 helpers.openRepoUpdate = repoUpdateManager.open;
+const devTools = connectDevTools(helpers);
+helpers.openDevTool = devTools.open;
 connectScanPathManager(helpers);
 connectLauncherUpdateChecker(helpers);
 connectDevSettings(helpers);
@@ -323,48 +276,7 @@ connectRandomizerSetup({
   runAction,
   selectedProjectPayload,
 });
-elements.venvButton.addEventListener("click", async () => {
-  const payload = selectedProjectPayload();
-  if (payload) {
-    await runSetupAction("create_venv", payload, ["python"]);
-  }
-});
-elements.dependenciesButton.addEventListener("click", async () => {
-  const payload = selectedProjectPayload();
-  if (payload) {
-    await runSetupAction("install_dependencies", payload, ["python", "venv"]);
-  }
-});
-elements.extractButton.addEventListener("click", async () => {
-  const payload = selectedProjectPayload();
-  if (payload) {
-    await runSetupAction("extract_assets", payload, extractAssetRequiredCheckIds());
-  }
-});
-elements.extractVisualStudioButton.addEventListener("click", async () => {
-  const payload = selectedProjectPayload();
-  if (payload) {
-    await runSetupAction("extract_assets_visual_studio", payload, [
-      "python",
-      "venv",
-      "python-dependencies",
-      "rom",
-      "msbuild",
-    ]);
-  }
-});
-elements.extractTccButton.addEventListener("click", async () => {
-  const payload = selectedProjectPayload();
-  if (payload) {
-    await runSetupAction("extract_assets_tcc", payload, [
-      "python",
-      "venv",
-      "python-dependencies",
-      "rom",
-      "tcc",
-    ]);
-  }
-});
+connectEnvironmentSetupActions(helpers, environmentScreen);
 elements.environmentPlayButton.addEventListener("click", async () => {
   const candidate = state.candidates.find((entry) => entry.path === state.selectedPath);
 

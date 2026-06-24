@@ -38,6 +38,8 @@ async function runEnvironmentChecks(helpers) {
     actionRunning: state.environmentActionRunning,
     hasSelectedProject: Boolean(state.selectedPath),
     failedSetupStep: state.failedSetupStep,
+    environmentOs: state.environmentOs,
+    downloadedLinuxGameExecutable: Boolean(state.runtimeInfo?.downloaded_linux_game_executable),
   });
   renderPlayableBadge(helpers);
   renderSteps(helpers);

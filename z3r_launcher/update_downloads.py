@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from . import __version__
-from .app_commands import launcher_release_api_url
+from .app_commands import read_dev_settings
 from .constants import GITHUB_TOKEN_ENV
 from .errors import LauncherError
 from .platform_paths import display_path, resources_dir
@@ -20,13 +20,19 @@ from .platform_paths import display_path, resources_dir
 
 def fetch_latest_release(update_dir: Path) -> dict[str, Any]:
     release_json = update_dir / "latest-release.json"
-    download_url_to_file(launcher_release_api_url(), release_json, github_api=True)
+    update_settings = read_dev_settings()
+    update_url = update_settings["effective_launcher_update_api_url"]
+    download_url_to_file(update_url, release_json, github_api=True)
     try:
         release = json.loads(release_json.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
         raise LauncherError(f"Could not parse GitHub release metadata: {error}") from error
     if not release.get("tag_name"):
         raise LauncherError("GitHub returned a release without a tag name.")
+    release["_launcher_update_source"] = {
+        "api_url": update_url,
+        "dev_override": bool(update_settings.get("launcher_update_api_url")),
+    }
     return release
 
 
@@ -44,7 +50,10 @@ def exact_asset(release: dict[str, Any], name: str) -> dict[str, Any]:
         if asset.get("name") == name:
             return asset
     available = ", ".join(asset.get("name", "") for asset in release.get("assets", []))
-    raise LauncherError(f"Release {release.get('tag_name')} does not include required update asset {name}. Available assets: {available}.")
+    raise LauncherError(
+        f"Release {release.get('tag_name')} does not include required update asset {name}. "
+        f"Available assets: {available}."
+    )
 
 
 def first_release_asset(release: dict[str, Any], names: list[str]) -> dict[str, Any]:
@@ -55,14 +64,19 @@ def first_release_asset(release: dict[str, Any], names: list[str]) -> dict[str, 
                 return asset
     available = ", ".join(asset.get("name", "") for asset in release.get("assets", []))
     expected = ", ".join(names)
-    raise LauncherError(f"Release {release.get('tag_name')} does not include a required update asset. Expected one of: {expected}. Available assets: {available}.")
+    raise LauncherError(
+        f"Release {release.get('tag_name')} does not include a required update asset. "
+        f"Expected one of: {expected}. Available assets: {available}."
+    )
 
 
 def updater_ssl_context() -> Any:
     try:
         import ssl
     except ImportError as error:
-        raise LauncherError("Launcher Python was built without SSL support, so HTTPS updates cannot be downloaded.") from error
+        raise LauncherError(
+            "Launcher Python was built without SSL support, so HTTPS updates cannot be downloaded."
+        ) from error
 
     try:
         import certifi
@@ -93,8 +107,9 @@ def download_url_to_file(url: str, destination: Path, github_api: bool) -> None:
     for attempt in range(4):
         try:
             request = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(request, timeout=300, context=context) as response, partial.open("wb") as output:
-                shutil.copyfileobj(response, output)
+            with urllib.request.urlopen(request, timeout=300, context=context) as response:
+                with partial.open("wb") as output:
+                    shutil.copyfileobj(response, output)
             partial.replace(destination)
             return
         except (OSError, urllib.error.URLError) as error:

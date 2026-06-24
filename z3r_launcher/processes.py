@@ -22,10 +22,13 @@ from .platform_paths import (
 def macos_search_paths() -> list[Path]:
     paths = [
         Path("/opt/homebrew/bin"),
+        Path("/opt/homebrew/opt/coreutils/libexec/gnubin"),
         Path("/opt/homebrew/opt/sdl2/bin"),
         Path("/usr/local/bin"),
+        Path("/usr/local/opt/coreutils/libexec/gnubin"),
         Path("/usr/local/opt/sdl2/bin"),
         Path("/opt/local/bin"),
+        Path("/opt/local/libexec/gnubin"),
         Path("/usr/bin"),
         Path("/bin"),
         Path("/usr/sbin"),
