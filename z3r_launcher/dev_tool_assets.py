@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import atexit
 import os
-import socket
 import subprocess
 import time
 from pathlib import Path
@@ -11,12 +10,12 @@ from typing import Any
 from .constants import DEV_TOOLS_DIR, DEV_TOOLS_SOURCE_URL, OVERWORLD_EDITOR_PORT, OVERWORLD_EDITOR_REPO
 from .dev_tool_processes import (
     dev_tool_subprocess_kwargs,
-    read_pid_file,
     remove_pid_file,
-    stop_pid,
     stop_process,
     write_pid_file,
 )
+from .dev_tool_ports import port_accepts_connections, port_is_bindable, require_port_bindable
+from .dev_tool_shutdown import stop_fixed_port_server
 from .errors import LauncherError
 from .platform_paths import display_path
 from .processes import (
@@ -38,7 +37,7 @@ DEFAULT_TOOL = {
 }
 COPY_IGNORES = {".git", "__pycache__"}
 STARTUP_TIMEOUT_SECONDS = 4.0
-STOP_TIMEOUT_SECONDS = 3.0
+STOP_TIMEOUT_SECONDS = 1.0
 RUNNING_TOOLS: dict[str, dict[str, Any]] = {}
 
 
@@ -215,6 +214,9 @@ def running_session(session_id: str) -> dict[str, Any] | None:
     if process and process.poll() is None:
         stop_running_session(session_id)
         return None
+    if not port_is_bindable(OVERWORLD_EDITOR_PORT):
+        stop_running_session(session_id)
+        return None
     remove_pid_file(session.get("pid_path") if session else None)
     RUNNING_TOOLS.pop(session_id, None)
     return None
@@ -223,7 +225,7 @@ def running_session(session_id: str) -> dict[str, Any] | None:
 def start_dev_tool_server(project: Path, tool: dict[str, str], tool_dir: Path, session_id: str) -> str:
     stop_other_sessions(session_id)
     stop_stale_session(session_id)
-    ensure_port_available(OVERWORLD_EDITOR_PORT)
+    require_port_bindable(OVERWORLD_EDITOR_PORT)
     url = f"http://127.0.0.1:{OVERWORLD_EDITOR_PORT}/"
     log_path = dev_tool_log_path(project, tool)
     pid_path = dev_tool_pid_path(project, tool)
@@ -306,14 +308,6 @@ def dev_tool_pid_path(project: Path, tool: dict[str, str]) -> Path:
     return project / DEV_TOOLS_DIR / ".launcher-logs" / f"{tool['id']}.pid"
 
 
-def ensure_port_available(port: int) -> None:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
-        try:
-            server.bind(("127.0.0.1", port))
-        except OSError as error:
-            raise LauncherError(f"Port {port} is already in use. Close the existing editor server first.") from error
-
-
 def wait_for_server(process: subprocess.Popen, tool: dict[str, str], log_path: Path) -> None:
     deadline = time.monotonic() + STARTUP_TIMEOUT_SECONDS
     while time.monotonic() < deadline:
@@ -324,14 +318,6 @@ def wait_for_server(process: subprocess.Popen, tool: dict[str, str], log_path: P
         time.sleep(0.1)
     stop_process(process, STOP_TIMEOUT_SECONDS)
     raise LauncherError(startup_error_message(tool, "did not start on", log_path))
-
-
-def port_accepts_connections(port: int) -> bool:
-    try:
-        with socket.create_connection(("127.0.0.1", port), timeout=0.2):
-            return True
-    except OSError:
-        return False
 
 
 def startup_error_message(tool: dict[str, str], reason: str, log_path: Path) -> str:
@@ -349,18 +335,16 @@ def read_log_tail(path: Path) -> str:
 
 
 def stop_running_session(session_id: str) -> None:
-    session = RUNNING_TOOLS.pop(session_id, None)
+    session = RUNNING_TOOLS.get(session_id)
     process = session.get("process") if session else None
     pid_path = session.get("pid_path") if session else pid_path_from_session_id(session_id)
-    stop_process(process, STOP_TIMEOUT_SECONDS)
-    stop_pid(read_pid_file(pid_path), STOP_TIMEOUT_SECONDS, lambda: not port_accepts_connections(OVERWORLD_EDITOR_PORT))
-    remove_pid_file(pid_path)
+    stop_fixed_port_server(process, pid_path, OVERWORLD_EDITOR_PORT, STOP_TIMEOUT_SECONDS)
+    RUNNING_TOOLS.pop(session_id, None)
 
 
 def stop_stale_session(session_id: str) -> None:
     pid_path = pid_path_from_session_id(session_id)
-    stop_pid(read_pid_file(pid_path), STOP_TIMEOUT_SECONDS, lambda: not port_accepts_connections(OVERWORLD_EDITOR_PORT))
-    remove_pid_file(pid_path)
+    stop_fixed_port_server(None, pid_path, OVERWORLD_EDITOR_PORT, STOP_TIMEOUT_SECONDS)
 
 
 def stop_other_sessions(session_id: str) -> None:
@@ -372,6 +356,7 @@ def stop_other_sessions(session_id: str) -> None:
 def stop_all_dev_tools() -> None:
     for session_id in list(RUNNING_TOOLS):
         stop_running_session(session_id)
+    stop_fixed_port_server(None, None, OVERWORLD_EDITOR_PORT, STOP_TIMEOUT_SECONDS)
 
 
 def pid_path_from_session_id(session_id: str) -> Path | None:

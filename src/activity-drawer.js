@@ -80,8 +80,7 @@ async function writeClipboard(text) {
 }
 
 function updateInfoText(settings, version) {
-  const override = settings.launcher_update_api_url?.trim();
-  const source = override ? "Dev update repo" : "Default update repo";
+  const source = settings.launcher_update_source === "dev" ? "Dev update repo" : "Default update repo";
   const repo = repoDisplayName(settings.effective_launcher_update_api_url);
   return `${source}: ${repo} | App version: ${version}`;
 }

@@ -11,6 +11,7 @@ from .environment_checks import missing_c_compiler_message, python_ssl_check
 from .errors import LauncherError
 from .github_urls import github_repo_owner_and_name, normalize_github_url
 from .linux_game_downloads import install_prebuilt_linux_game_executable
+from .linux_game_runtime import launch_env_for_game
 from .platform_paths import display_path, hidden_subprocess_kwargs, is_linux, is_windows, uses_downloaded_linux_game_executable
 from .processes import (
     action_result,
@@ -50,7 +51,7 @@ def launch_game(executable_path: str) -> dict[str, Any]:
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            env=command_env(),
+            env=launch_env_for_game(executable, working_dir, command_env()),
             **hidden_subprocess_kwargs(),
         )
     except OSError as error:
@@ -140,18 +141,42 @@ def extract_assets_with_route(project_path: str, route: str) -> dict[str, Any]:
     project = Path(project_path)
     python = venv_python(project / ".venv") or venv_python(project / "venv")
     if not python:
-        raise LauncherError("Create a venv before extracting assets.")
-    extract = run_command(display_path(python), ["assets/restool.py", "--extract-from-rom"], project, "Asset extraction complete.")
-    if not extract["ok"]:
-        return extract
-    if uses_downloaded_linux_game_executable():
-        download = install_prebuilt_linux_game_executable(project)
-        return combine_results("Asset extraction and executable download complete.", extract, download)
-    return extract
+        raise LauncherError("Create a venv before building assets.")
+    result = run_command(
+        display_path(python),
+        ["assets/restool.py", "--extract-from-rom"],
+        project,
+        "Asset extraction and zelda3_assets.dat build complete.",
+    )
+    if not result["ok"] or built_asset_path(project):
+        return result
+    return action_result(
+        False,
+        "restool.py finished, but zelda3_assets.dat was not found in the selected repo.",
+        result["stdout"],
+        result["stderr"],
+    )
+
+
+def built_asset_path(project: Path) -> Path | None:
+    candidates = [
+        project / "zelda3_assets.dat",
+        project / "tables" / "zelda3_assets.dat",
+        project / "bin" / "x64-Release" / "zelda3_assets.dat",
+        project / "bin" / "x64-ReleaseDeploy" / "zelda3_assets.dat",
+        project / "bin" / "Win32-Release" / "zelda3_assets.dat",
+        project / "bin" / "Win32-ReleaseDeploy" / "zelda3_assets.dat",
+    ]
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    return None
 
 
 def build_project(project_path: str) -> dict[str, Any]:
     project = Path(project_path)
+    if uses_downloaded_linux_game_executable():
+        return install_prebuilt_linux_game_executable(project)
     if is_windows():
         return run_visual_studio_build(project)
     return run_project_shell_command("make -j$(nproc)", project, "Project build complete.")

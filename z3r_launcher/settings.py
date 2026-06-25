@@ -22,9 +22,10 @@ def read_dev_settings_file() -> dict[str, Any]:
     return settings if isinstance(settings, dict) else {}
 
 
-def write_dev_settings(launcher_update_api_url: str) -> None:
+def write_dev_settings(launcher_update_api_url: str, launcher_update_source: str = "default") -> None:
     path = dev_settings_path()
-    if not launcher_update_api_url:
+    source = normalize_update_source(launcher_update_source, bool(launcher_update_api_url), legacy=False)
+    if not launcher_update_api_url and source == "default":
         try:
             path.unlink()
         except FileNotFoundError:
@@ -32,19 +33,33 @@ def write_dev_settings(launcher_update_api_url: str) -> None:
         return
 
     path.parent.mkdir(parents=True, exist_ok=True)
-    payload = {"launcher_update_api_url": launcher_update_api_url}
+    payload = {
+        "launcher_update_api_url": launcher_update_api_url,
+        "launcher_update_source": source,
+    }
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 def dev_settings_snapshot(normalize_url) -> dict[str, Any]:
-    override = read_dev_settings_file().get("launcher_update_api_url")
+    settings = read_dev_settings_file()
+    override = settings.get("launcher_update_api_url")
     override_url = normalize_url(override) if isinstance(override, str) else ""
-    effective_url = override_url or LAUNCHER_RELEASE_API_URL
+    source = normalize_update_source(settings.get("launcher_update_source"), bool(override_url), legacy=True)
+    effective_url = override_url if source == "dev" else LAUNCHER_RELEASE_API_URL
     return {
         "launcher_update_api_url": override_url,
+        "launcher_update_source": source,
         "default_launcher_update_api_url": LAUNCHER_RELEASE_API_URL,
         "effective_launcher_update_api_url": effective_url,
     }
+
+
+def normalize_update_source(value: Any, has_dev_url: bool, legacy: bool) -> str:
+    if value == "dev" and has_dev_url:
+        return "dev"
+    if value == "default":
+        return "default"
+    return "dev" if legacy and has_dev_url else "default"
 
 
 def repo_settings_path() -> Path:

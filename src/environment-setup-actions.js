@@ -15,7 +15,7 @@ export function connectEnvironmentSetupActions(helpers, environmentScreen) {
     await runSelectedSetupAction(helpers, environmentScreen, "extract_assets", assetRequiredCheckIds(helpers.state));
   });
   elements.buildProjectButton.addEventListener("click", async () => {
-    await runSelectedSetupAction(helpers, environmentScreen, "build_project", ["make", "c-compiler", "sdl2-dev"]);
+    await runSelectedSetupAction(helpers, environmentScreen, "build_project", projectBuildRequiredCheckIds(helpers.state));
   });
   elements.rebuildProjectButton.addEventListener("click", async () => {
     await runSelectedSetupAction(helpers, environmentScreen, "rebuild_project", ["make", "c-compiler", "sdl2-dev"]);
@@ -80,6 +80,11 @@ function refreshEnvironmentActions(helpers) {
 }
 
 function assetRequiredCheckIds(state) {
-  const baseIds = ["python", "venv", "python-dependencies", "rom"];
-  return state.runtimeInfo?.downloaded_linux_game_executable ? [...baseIds, "game-executable-download"] : baseIds;
+  return ["python", "venv", "python-dependencies", "rom"];
+}
+
+function projectBuildRequiredCheckIds(state) {
+  return state.runtimeInfo?.downloaded_linux_game_executable
+    ? ["game-executable-download"]
+    : ["make", "c-compiler", "sdl2-dev"];
 }

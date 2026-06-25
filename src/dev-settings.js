@@ -32,6 +32,7 @@ export function connectDevSettings(helpers) {
   helpers.elements.devSettingsSaveButton.addEventListener("click", async () => saveDevSettings(helpers));
   helpers.elements.devSettingsResetButton.addEventListener("click", async () => resetDevSettings(helpers));
   helpers.elements.devSettingsCloseButton.addEventListener("click", () => helpers.elements.devSettingsDialog.close());
+  helpers.elements.devUpdatePathInput.addEventListener("input", () => refreshDevSourcePreview(helpers));
 
   document.addEventListener("keydown", (event) => {
     if (!isDevUnlockTrigger(event, helpers)) {
@@ -133,6 +134,7 @@ async function saveDevSettings(helpers) {
   try {
     const snapshot = await helpers.call("save_dev_settings", {
       launcherUpdateApiUrl: elements.devUpdatePathInput.value,
+      launcherUpdateSource: selectedUpdateSource(helpers),
     });
     applyDevSettingsSnapshot(snapshot, helpers);
     await helpers.refreshActivityUpdateInfo?.();
@@ -151,6 +153,7 @@ async function resetDevSettings(helpers) {
   try {
     const snapshot = await helpers.call("save_dev_settings", {
       launcherUpdateApiUrl: "",
+      launcherUpdateSource: "default",
     });
     applyDevSettingsSnapshot(snapshot, helpers);
     await helpers.refreshActivityUpdateInfo?.();
@@ -165,8 +168,90 @@ async function resetDevSettings(helpers) {
 function applyDevSettingsSnapshot(snapshot, helpers) {
   const { elements } = helpers;
   elements.devUpdatePathInput.value = snapshot.launcher_update_api_url ?? "";
+  renderUpdateSourceChoices(snapshot, helpers);
+}
+
+function renderUpdateSourceChoices(snapshot, helpers) {
+  const { elements } = helpers;
+  const container = devSettingsPathsContainer(helpers);
+  container.innerHTML = `
+    <label class="dev-update-source-row">
+      <input class="dev-update-source-checkbox" type="checkbox" value="default" />
+      <span><strong>Default</strong><p id="devDefaultUpdatePath" class="path-line"></p></span>
+    </label>
+    <label class="dev-update-source-row">
+      <input class="dev-update-source-checkbox" type="checkbox" value="dev" />
+      <span><strong>Dev</strong><p id="devEffectiveUpdatePath" class="path-line"></p></span>
+    </label>
+  `;
+  elements.devDefaultUpdatePath = container.querySelector("#devDefaultUpdatePath");
+  elements.devEffectiveUpdatePath = container.querySelector("#devEffectiveUpdatePath");
+  for (const input of container.querySelectorAll(".dev-update-source-checkbox")) {
+    input.addEventListener("change", () => chooseUpdateSource(input, helpers));
+  }
   elements.devDefaultUpdatePath.textContent = snapshot.default_launcher_update_api_url ?? "";
-  elements.devEffectiveUpdatePath.textContent = snapshot.effective_launcher_update_api_url ?? "";
+  setCheckedUpdateSource(snapshot.launcher_update_source, helpers);
+  refreshDevSourcePreview(helpers);
+}
+
+function refreshDevSourcePreview(helpers) {
+  const { elements } = helpers;
+  const devUrl = elements.devUpdatePathInput.value.trim();
+  const devCheckbox = updateSourceCheckbox(helpers, "dev");
+  const defaultCheckbox = updateSourceCheckbox(helpers, "default");
+  elements.devEffectiveUpdatePath.textContent = devUrl || "No dev update path saved.";
+  if (devCheckbox) {
+    devCheckbox.disabled = !devUrl;
+  }
+  if (!devUrl && devCheckbox?.checked) {
+    if (defaultCheckbox) {
+      defaultCheckbox.checked = true;
+    }
+    devCheckbox.checked = false;
+  }
+}
+
+function chooseUpdateSource(input, helpers) {
+  if (!input.checked) {
+    input.checked = true;
+    return;
+  }
+  if (input.value === "dev" && !helpers.elements.devUpdatePathInput.value.trim()) {
+    input.checked = false;
+    const defaultCheckbox = updateSourceCheckbox(helpers, "default");
+    if (defaultCheckbox) {
+      defaultCheckbox.checked = true;
+    }
+    return;
+  }
+  for (const item of updateSourceCheckboxes(helpers)) {
+    item.checked = item === input;
+  }
+}
+
+function setCheckedUpdateSource(source, helpers) {
+  const devUrl = helpers.elements.devUpdatePathInput.value.trim();
+  const selected = source === "dev" && devUrl ? "dev" : "default";
+  for (const input of updateSourceCheckboxes(helpers)) {
+    input.checked = input.value === selected;
+  }
+}
+
+function selectedUpdateSource(helpers) {
+  const selected = [...updateSourceCheckboxes(helpers)].find((input) => input.checked)?.value;
+  return selected === "dev" && helpers.elements.devUpdatePathInput.value.trim() ? "dev" : "default";
+}
+
+function updateSourceCheckbox(helpers, value) {
+  return [...updateSourceCheckboxes(helpers)].find((input) => input.value === value) ?? null;
+}
+
+function updateSourceCheckboxes(helpers) {
+  return devSettingsPathsContainer(helpers)?.querySelectorAll(".dev-update-source-checkbox") ?? [];
+}
+
+function devSettingsPathsContainer(helpers) {
+  return helpers.elements.devDefaultUpdatePath.closest(".dev-settings-paths");
 }
 
 // Reports whether this keydown is the hidden entry trigger.

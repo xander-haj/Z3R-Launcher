@@ -1,6 +1,6 @@
 {
   "macos": [
-    "Upload your legally obtained US ROM with Upload SFC, or place it as zelda3.sfc in the Z3R folder.",
+    "Upload your legally obtained US ROM with Upload SFC, or place it as zelda3.sfc in the selected repo folder.",
     "Press the Create venv button.",
     "After venv activation, press the install dependencies button",
     "Install a C compiler and SDL2 development files with your OS package manager before building.",
@@ -9,7 +9,7 @@
     "When it finishes, go back to the home menu to Play or Randomize."
   ],
   "windows": [
-    "Upload your legally obtained US ROM with Upload SFC, or place it as zelda3.sfc in the Z3R folder.",
+    "Upload your legally obtained US ROM with Upload SFC, or place it as zelda3.sfc in the selected repo folder.",
     "Make sure MSBuild is installed, or use the Manual install button beside any missing dependency check.",
     "Press the Create venv button.",
     "After venv activation, press the install dependencies button",
@@ -20,7 +20,7 @@
     "When it finishes, go back to the home menu to Play or Randomize."
   ],
   "linux": [
-    "Upload your legally obtained US ROM with Upload SFC, or place it as zelda3.sfc in the Z3R folder.",
+    "Upload your legally obtained US ROM with Upload SFC, or place it as zelda3.sfc in the selected repo folder.",
     "Press the Create venv button. On Debian/Ubuntu, install venv support first if Python asks for python3-venv.",
     "After venv activation, press the install dependencies button",
     "Make sure the C compiler check is OK, then install SDL2 development files before building. On apt-based Linux/Unix systems, use `sudo apt-get install libsdl2-dev`.",
@@ -29,10 +29,11 @@
     "When it finishes, go back to the home menu to Play or Randomize."
   ],
   "linux_packaged": [
-    "Upload your legally obtained US ROM with Upload SFC, or place it as zelda3.sfc in the Z3R folder.",
+    "Upload your legally obtained US ROM with Upload SFC, or place it as zelda3.sfc in the selected repo folder.",
     "Press the Create venv button. On Debian/Ubuntu, install venv support first if Python asks for python3-venv.",
     "After venv activation, press the install dependencies button",
-    "Press the Build assets button to extract assets, compile zelda3_assets.dat, and download the matching Z3R executable.",
-    "When it finishes, press Play."
+    "Press the Build assets button to extract assets and compile zelda3_assets.dat.",
+    "Press Build project to download the matching executable/AppImage from the selected repo release.",
+    "When both finish, press Play."
   ]
 }

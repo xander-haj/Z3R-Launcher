@@ -35,7 +35,22 @@
   gap: 8px;
 }
 
-.dev-settings-paths strong {
+.dev-update-source-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid rgba(188, 157, 84, 0.34);
+  border-radius: 8px;
+  background: rgba(5, 18, 10, 0.5);
+}
+
+.dev-update-source-row input {
+  margin-top: 2px;
+}
+
+.dev-update-source-row strong {
   color: var(--gold-bright);
   font-size: 0.74rem;
   text-transform: uppercase;

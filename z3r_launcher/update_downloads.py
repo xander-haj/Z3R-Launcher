@@ -31,7 +31,8 @@ def fetch_latest_release(update_dir: Path) -> dict[str, Any]:
         raise LauncherError("GitHub returned a release without a tag name.")
     release["_launcher_update_source"] = {
         "api_url": update_url,
-        "dev_override": bool(update_settings.get("launcher_update_api_url")),
+        "selected_source": update_settings.get("launcher_update_source"),
+        "dev_override": update_settings.get("launcher_update_source") == "dev",
     }
     return release
 

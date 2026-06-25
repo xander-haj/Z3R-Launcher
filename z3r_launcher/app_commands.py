@@ -37,16 +37,28 @@ def read_dev_settings() -> dict[str, Any]:
     return dev_settings_snapshot(normalize_launcher_update_api_url)
 
 
-def save_dev_settings(launcher_update_api_url: str | None = None) -> dict[str, Any]:
+def save_dev_settings(
+    launcher_update_api_url: str | None = None,
+    launcher_update_source: str | None = None,
+) -> dict[str, Any]:
     url = normalize_launcher_update_api_url(launcher_update_api_url or "")
-    write_dev_settings(url)
+    source = "dev" if launcher_update_source == "dev" and url else "default"
+    write_dev_settings(url, source)
     snapshot = read_dev_settings()
-    snapshot["message"] = "Dev update path saved." if url else "Dev update path reset."
+    snapshot["message"] = dev_settings_message(url, source)
     return snapshot
 
 
 def launcher_release_api_url() -> str:
     return read_dev_settings()["effective_launcher_update_api_url"]
+
+
+def dev_settings_message(url: str, source: str) -> str:
+    if not url:
+        return "Dev update path reset."
+    if source == "dev":
+        return "Dev update path saved and selected."
+    return "Dev update path saved. Default update path is selected."
 
 
 def app_runtime_info() -> dict[str, Any]:

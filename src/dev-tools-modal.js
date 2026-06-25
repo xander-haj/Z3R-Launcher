@@ -19,8 +19,9 @@ export function connectDevTools(helpers) {
   refs.homeButton.addEventListener("click", () => {
     void closeRunner(refs, state, helpers).catch((error) => helpers.log(`Could not stop dev tool: ${error}`));
   });
-  helpers.elements.backButton.addEventListener("click", () => {
+  helpers.elements.backButton.addEventListener("click", (event) => {
     if (helpers.state.activeView === "dev-tool-runner") {
+      event.stopImmediatePropagation();
       void closeRunner(refs, state, helpers).catch((error) => helpers.log(`Could not stop dev tool: ${error}`));
     }
   });
@@ -220,7 +221,7 @@ async function installSelectedTools(refs, helpers) {
 
 async function openDevTool(projectPath, toolId, refs, state, helpers) {
   if (state.stopPromise) {
-    await state.stopPromise.catch(() => {});
+    await state.stopPromise;
   }
 
   const result = await helpers.call("launch_dev_tool", { projectPath, toolId });
@@ -233,15 +234,20 @@ async function openDevTool(projectPath, toolId, refs, state, helpers) {
 }
 
 async function closeRunner(refs, state, helpers) {
+  if (state.stopPromise) {
+    return state.stopPromise;
+  }
+
   const sessionId = state.sessionId;
   state.sessionId = null;
-  refs.runnerFrame.removeAttribute("src");
+  refs.runnerFrame.src = "about:blank";
   hideHomeButton(refs, state);
-  helpers.showView("builds");
   const stopPromise = helpers.call("stop_dev_tool", sessionId ? { sessionId } : {});
   state.stopPromise = stopPromise;
   try {
-    await stopPromise;
+    const result = await stopPromise;
+    helpers.log(result.message);
+    helpers.showView("builds");
   } finally {
     if (state.stopPromise === stopPromise) {
       state.stopPromise = null;

@@ -93,7 +93,7 @@ def check_python() -> dict[str, str]:
 
 def check_venv(project_path: Path | None) -> dict[str, str]:
     if not project_path:
-        return unknown_check("venv", "Python virtual environment", "Select or clone a Z3R folder before checking its venv.")
+        return unknown_check("venv", "Python virtual environment", "Select or clone a repo before checking its venv.")
     for folder in (project_path / ".venv", project_path / "venv"):
         if venv_python(folder):
             return ok_check("venv", "Python virtual environment", f"Found {display_path(folder)}")
@@ -103,12 +103,12 @@ def check_venv(project_path: Path | None) -> dict[str, str]:
 def missing_venv_detail() -> str:
     if is_linux():
         return "Create one with the Create venv button. On Debian/Ubuntu, install `python3-venv` if Python reports ensurepip is missing."
-    return "Create one with `python -m venv .venv` inside the Z3R folder."
+    return "Create one with `python -m venv .venv` inside the selected repo."
 
 
 def check_python_dependencies(project_path: Path | None) -> dict[str, str]:
     if not project_path:
-        return unknown_check("python-dependencies", "Python dependencies", "Select or clone a Z3R folder before checking Pillow and PyYAML.")
+        return unknown_check("python-dependencies", "Python dependencies", "Select or clone a repo before checking Pillow and PyYAML.")
     python = venv_python(project_path / ".venv") or venv_python(project_path / "venv")
     if not python:
         return missing_check("python-dependencies", "Python dependencies", "Create a venv before installing or checking Python requirements.")
@@ -134,16 +134,16 @@ def missing_c_compiler_message() -> str:
 
 def check_rom(project_path: Path | None) -> dict[str, str]:
     if not project_path:
-        return unknown_check("rom", "Game ROM (zelda3.sfc)", "Select or clone a Z3R folder before checking the ROM.")
+        return unknown_check("rom", "Game ROM (zelda3.sfc)", "Select or clone a repo before checking the ROM.")
     rom = project_path / STORED_ROM_NAME
     if rom.is_file():
         return ok_check("rom", "Game ROM (zelda3.sfc)", f"Found {display_path(rom)}")
-    return missing_check("rom", "Game ROM (zelda3.sfc)", "Upload your SFC in the launcher, or place it as zelda3.sfc in the Z3R folder.")
+    return missing_check("rom", "Game ROM (zelda3.sfc)", "Upload your SFC in the launcher, or place it as zelda3.sfc in the selected repo.")
 
 
 def check_linux_game_executable_download(project_path: Path | None) -> dict[str, str]:
     if not project_path:
-        return unknown_check("game-executable-download", "Linux executable download", "Select or clone a Z3R folder before checking executable downloads.")
+        return unknown_check("game-executable-download", "Linux executable download", "Select or clone a repo before checking executable downloads.")
     try:
         spec = project_release_spec(project_path)
     except LauncherError as error:

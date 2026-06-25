@@ -9,6 +9,7 @@ from typing import Any
 
 from .constants import LINUX_GAME_ARCHIVE_SUFFIXES, LINUX_GAME_EXECUTABLE_NAMES, PROJECT_RELEASES
 from .errors import LauncherError
+from .linux_game_runtime import install_appimage_game_asset
 from .platform_paths import display_path, update_work_dir
 from .processes import action_result, decode_output, git_program, run_process
 from .project_files import make_executable
@@ -34,18 +35,51 @@ def install_prebuilt_linux_game_executable(project: Path) -> dict[str, Any]:
 def project_release_spec(project: Path) -> dict[str, Any]:
     remote = project_remote_origin(project)
     slug = github_slug_from_remote(remote) if remote else None
-    supported = ", ".join(spec["label"] for spec in PROJECT_RELEASES.values())
     if slug:
         if slug in PROJECT_RELEASES:
             return PROJECT_RELEASES[slug]
-        raise LauncherError(f"Prebuilt Linux executable downloads are only configured for {supported}. Remote origin is {remote}.")
+        return github_project_release_spec(slug)
     if remote:
-        raise LauncherError(f"Prebuilt Linux executable downloads are only configured for {supported}. Remote origin is {remote}.")
+        raise LauncherError(f"Could not read a GitHub owner/repo from this project's remote origin: {remote}.")
 
     folder_slug = f"xander-haj/{project.name.lower()}"
     if folder_slug in PROJECT_RELEASES:
         return PROJECT_RELEASES[folder_slug]
-    raise LauncherError(f"Prebuilt Linux executable downloads are only configured for {supported}. Could not read this project's GitHub remote.")
+    return github_project_release_spec(folder_slug)
+
+
+def github_project_release_spec(slug: str) -> dict[str, Any]:
+    owner, repo = slug.split("/", 1)
+    label = repo
+    return {
+        "id": slug.replace("/", "-"),
+        "label": label,
+        "releases_url": f"https://github.com/{owner}/{repo}/releases",
+        "api_url": f"https://api.github.com/repos/{owner}/{repo}/releases/latest",
+        "preferred_assets": preferred_linux_assets(label),
+    }
+
+
+def preferred_linux_assets(label: str) -> tuple[str, ...]:
+    names = []
+    for base in unique_asset_bases(label):
+        names.extend([
+            f"{base}-linux-x64.AppImage",
+            f"{base}-linux-x86_64.AppImage",
+            f"{base}-linux-amd64.AppImage",
+            f"{base}-linux-x64.tar.gz",
+            f"{base}-linux-x64.zip",
+        ])
+    return tuple(names)
+
+
+def unique_asset_bases(label: str) -> list[str]:
+    bases = [label, label.upper(), label.capitalize()]
+    unique: list[str] = []
+    for base in bases:
+        if base and base not in unique:
+            unique.append(base)
+    return unique
 
 
 def project_remote_origin(project: Path) -> str | None:
@@ -116,8 +150,8 @@ def project_linux_executable_asset(release: dict[str, Any], spec: dict[str, Any]
     available = ", ".join(str(asset.get("name") or "") for asset in assets)
     expected = ", ".join(spec["preferred_assets"])
     raise LauncherError(
-        f"Release {release.get('tag_name')} does not include a Linux executable archive for {spec['label']}. "
-        f"Expected {expected}, or a linux x64 tar/zip asset that is not an AppImage/Flatpak. Available assets: {available}."
+        f"Release {release.get('tag_name')} does not include a Linux executable asset for {spec['label']}. "
+        f"Expected {expected}, or a linux x64 AppImage/tar/zip asset. Available assets: {available}."
     )
 
 
@@ -125,17 +159,21 @@ def is_linux_game_executable_asset_name(name: str) -> bool:
     lower = name.lower()
     if lower in LINUX_GAME_EXECUTABLE_NAMES:
         return True
+    if lower.endswith(".appimage"):
+        blocked = ("windows", "macos", "darwin", "apple", "silicon", "arm64", "aarch64")
+        return not any(token in lower for token in blocked)
     if not any(lower.endswith(suffix) for suffix in LINUX_GAME_ARCHIVE_SUFFIXES):
         return False
     if "linux" not in lower or not any(token in lower for token in ("x64", "x86_64", "amd64")):
         return False
-    blocked = ("appimage", "flatpak", "windows", "macos", "darwin", "apple", "silicon", "arm64", "aarch64")
+    blocked = ("flatpak", "windows", "macos", "darwin", "apple", "silicon", "arm64", "aarch64")
     return not any(token in lower for token in blocked)
 
 
 def linux_game_executable_asset_score(name: str, spec: dict[str, Any]) -> int:
     lower = name.lower()
     score = 100 if lower in LINUX_GAME_EXECUTABLE_NAMES else 0
+    score += 60 if lower.endswith(".appimage") else 0
     score += {".tar.gz": 40, ".tgz": 35, ".tar": 30, ".zip": 20}.get(next((s for s in LINUX_GAME_ARCHIVE_SUFFIXES if lower.endswith(s)), ""), 0)
     return score + (10 if str(spec["label"]).lower() in lower else 0)
 
@@ -153,10 +191,12 @@ def install_linux_game_executable_asset(asset_path: Path, project: Path) -> Path
             extract_linux_game_executable_from_tar(asset_path, temporary)
         elif asset_path.suffix.lower() == ".zip":
             extract_linux_game_executable_from_zip(asset_path, temporary)
+        elif asset_path.name.lower().endswith(".appimage"):
+            return install_appimage_game_asset(asset_path, project)
         elif asset_path.name.lower() in LINUX_GAME_EXECUTABLE_NAMES:
             shutil.copy2(asset_path, temporary)
         else:
-            raise LauncherError(f"Downloaded asset is not a supported Linux executable archive: {asset_path.name}")
+            raise LauncherError(f"Downloaded asset is not a supported Linux executable/AppImage: {asset_path.name}")
 
         if not temporary.is_file() or temporary.stat().st_size == 0:
             raise LauncherError("Downloaded game executable was empty.")

@@ -12,23 +12,23 @@ export function updateEnvironmentActions(elements, checks, options = {}) {
   const pythonReady = checkReady(checks, "python");
   const venvReady = checkReady(checks, "venv");
   const dependenciesReady = checkReady(checks, "python-dependencies");
-  // Build assets invokes restool.py --extract-from-rom, which fails without zelda3.sfc in the project root.
+  // Build assets invokes restool.py --extract-from-rom, which extracts and compiles zelda3_assets.dat.
   const romReady = checkReady(checks, "rom");
-  const executableDownloadReady =
-    !checks.some((check) => check.id === "game-executable-download") ||
-    checkReady(checks, "game-executable-download");
   const windowsReady = checks.some((check) => check.id === "msbuild" || check.id === "tcc");
   const unixBuildIds = ["make", "c-compiler", "sdl2-dev"];
   const hasUnixBuildChecks = checks.some((check) => unixBuildIds.includes(check.id));
   const unixBuildReady = !hasUnixBuildChecks || checksReady(checks, unixBuildIds);
+  const packagedLinuxBuildReady = checkReady(checks, "game-executable-download");
   const msbuildReady = checkReady(checks, "msbuild");
   const tccReady = checkReady(checks, "tcc");
-  const assetBuildReady = pythonReady && venvReady && dependenciesReady && romReady && executableDownloadReady;
+  const assetBuildReady = pythonReady && venvReady && dependenciesReady && romReady;
   const venvFailureBlocksDownstream = failedSetupStep === "create_venv";
   const dependencyFailureBlocksAssets = failedSetupStep === "install_dependencies";
   const setupBlocked = actionRunning || !hasSelectedProject;
-  const showUnixProjectBuild =
+  const showSourceProjectBuild =
     !windowsReady && !downloadedLinuxGameExecutable && (environmentOs === "macos" || environmentOs === "linux");
+  const showPackagedLinuxProjectBuild = !windowsReady && downloadedLinuxGameExecutable;
+  const showBuildProject = showSourceProjectBuild || showPackagedLinuxProjectBuild;
 
   elements.venvButton.disabled = setupBlocked || !pythonReady;
   elements.dependenciesButton.disabled =
@@ -36,9 +36,10 @@ export function updateEnvironmentActions(elements, checks, options = {}) {
   elements.extractButton.classList.remove("hidden");
   elements.extractButton.disabled =
     setupBlocked || venvFailureBlocksDownstream || dependencyFailureBlocksAssets || !assetBuildReady;
-  elements.buildProjectButton.classList.toggle("hidden", !showUnixProjectBuild);
-  elements.buildProjectButton.disabled = setupBlocked || !unixBuildReady;
-  elements.rebuildProjectButton.classList.toggle("hidden", !showUnixProjectBuild);
+  elements.buildProjectButton.classList.toggle("hidden", !showBuildProject);
+  elements.buildProjectButton.disabled =
+    setupBlocked || (showPackagedLinuxProjectBuild ? !packagedLinuxBuildReady : !unixBuildReady);
+  elements.rebuildProjectButton.classList.toggle("hidden", !showSourceProjectBuild);
   elements.rebuildProjectButton.disabled = setupBlocked || !unixBuildReady;
   elements.buildVisualStudioButton.classList.toggle("hidden", !windowsReady || !msbuildReady);
   elements.buildVisualStudioButton.disabled = setupBlocked || !msbuildReady;

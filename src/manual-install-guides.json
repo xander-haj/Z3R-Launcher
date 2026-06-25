@@ -333,7 +333,7 @@
         },
         {
           "title": "Packaged Linux note",
-          "text": "AppImage and Flatpak launcher releases download the matching Z3R executable instead of compiling it locally. Source runs and native Linux builds still need gcc or clang from the system."
+          "text": "AppImage and Flatpak launcher releases download the matching executable or AppImage from the selected repo release instead of compiling it locally. Source runs and native Linux builds still need gcc or clang from the system."
         },
         {
           "title": "Run checks again",
