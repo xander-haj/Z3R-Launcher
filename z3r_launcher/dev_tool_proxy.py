@@ -26,11 +26,17 @@ HOP_BY_HOP_HEADERS = {
 
 
 def dev_tool_proxy_target(path: str) -> str | None:
+    """Return the Overworld Editor route that the launcher may proxy."""
     if path == "/dev-tool":
         return "/"
     if path.startswith("/dev-tool/"):
         return path.removeprefix("/dev-tool")
-    if path.startswith(("/api/mods", "/api/overworld-dump", "/api/generated-preview")):
+    if path.startswith((
+        "/api/mods",
+        "/api/overworld-dump",
+        "/api/editor-assets",
+        "/api/generated-preview",
+    )):
         return path
     if path == "/api/info":
         return path
