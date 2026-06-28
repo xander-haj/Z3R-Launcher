@@ -52,6 +52,7 @@ from .randomizer_commands import (
 )
 from .repo_scanner import scan_siblings
 from .repo_update import apply_repo_update, preview_repo_update, rename_zelda_ini_to_user_ini
+from .project_versions import read_project_release_version
 from .setup_commands import (
     apply_snesrev_makefile_patch,
     apply_snesrev_solution_patch,
@@ -82,6 +83,7 @@ class LauncherBackend:
     def build_command_map(self) -> dict[str, Callable[..., Any]]:
         return {
             "scan_siblings": scan_siblings,
+            "read_project_release_version": read_project_release_version,
             "app_runtime_info": app_runtime_info,
             "launcher_version": current_update_version,
             "read_repo_settings": read_repo_settings,

@@ -40,6 +40,13 @@
   font-style: italic;
 }
 
+.card-version {
+  margin: 5px 0 0;
+  color: var(--green);
+  font-family: var(--font-mono);
+  font-size: 0.84rem;
+}
+
 .project-card .card-top-actions {
   display: flex;
   flex-direction: column;

@@ -8,6 +8,7 @@ import { escapeHtml, labelStatus } from "./shared-utils.js";
 import { mountAspectRatioWidget } from "./card-aspect-ratio.js";
 
 let cardMenuCloserAttached = false;
+const releaseVersionCache = new Map();
 
 // Wires up the project-list rendering loop and exposes a `render()` callback the host
 // uses to repaint after any state change. `helpers` carries state, DOM refs, the backend
@@ -84,6 +85,7 @@ function buildProjectCard(candidate, helpers) {
   const selectedClass = candidate.path === state.selectedPath ? "selected" : "";
   const playableClass = isPlayable ? "" : "not-playable";
   card.className = `project-card ${selectedClass} ${playableClass}`;
+  card.dataset.projectPath = candidate.path;
   card.addEventListener("click", () => {
     closeAllCardMenus();
     selectProject(candidate.path);
@@ -103,6 +105,7 @@ function buildProjectCard(candidate, helpers) {
     playDisabled,
     nameSafe: escapeHtml(candidate.name),
     authorLine,
+    releaseVersionLine: releaseVersionLineMarkup(candidate),
     patchButton: sourcePatchButtonMarkup(candidate, isPlayable),
     repoButton: repoButtonMarkup(candidate, isPlayable),
     disabledUntilPlayable: disabledUntilPlayableAttribute(isPlayable),
@@ -112,6 +115,7 @@ function buildProjectCard(candidate, helpers) {
   });
 
   wireCardButtons(card, candidate, helpers);
+  mountReleaseVersion(card, candidate, helpers);
   // Mount the inline Aspect Ratio compound widget into the placeholder slot. The widget
   // owns its own debounce + auto-save loop against the project's zelda3.ini.
   const aspectMount = card.querySelector(".card-aspect-mount");
@@ -139,6 +143,7 @@ function buildCardMarkup({
   playDisabled,
   nameSafe,
   authorLine,
+  releaseVersionLine,
   patchButton,
   repoButton,
   disabledUntilPlayable,
@@ -156,6 +161,7 @@ function buildCardMarkup({
     <div class="card-title-block">
       <h3>${nameSafe}</h3>
       ${authorLine}
+      ${releaseVersionLine}
     </div>
     <div class="card-config-actions">
       <div class="card-aspect-mount"></div>
@@ -199,6 +205,35 @@ function buildCardMarkup({
       <button class="secondary-button randomizer-button" type="button" ${disabledUntilPlayable}>Randomizer</button>
     </div>
   `;
+}
+
+function releaseVersionLineMarkup(candidate) {
+  return candidate.git_repo ? '<p class="card-version" data-card-version hidden></p>' : "";
+}
+
+async function mountReleaseVersion(card, candidate, helpers) {
+  const target = card.querySelector("[data-card-version]");
+  if (!target) {
+    return;
+  }
+  try {
+    const result = await cachedReleaseVersion(candidate.path, helpers);
+    if (candidate.path !== card.dataset.projectPath || !result?.available || !result.version) {
+      return;
+    }
+    target.textContent = result.version;
+    target.hidden = false;
+  } catch (error) {
+    target.textContent = "";
+    target.hidden = true;
+  }
+}
+
+function cachedReleaseVersion(projectPath, helpers) {
+  if (!releaseVersionCache.has(projectPath)) {
+    releaseVersionCache.set(projectPath, helpers.call("read_project_release_version", { projectPath }));
+  }
+  return releaseVersionCache.get(projectPath);
 }
 
 // Attaches the per-button click handlers. The aspect ratio widget mounts later because

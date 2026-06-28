@@ -139,6 +139,18 @@
   gap: 10px;
 }
 
+.operation-verification {
+  color: var(--green);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.operation-verification.failed {
+  color: var(--red);
+}
+
 .repo-update-file-list {
   display: grid;
   max-height: 320px;

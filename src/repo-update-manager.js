@@ -43,6 +43,7 @@ async function openRepoUpdate(candidate, helpers) {
   elements.repoUpdateWarnings.textContent = "";
   elements.repoUpdateSummary.textContent = "Fetching upstream changes...";
   elements.repoUpdateFileList.textContent = "";
+  clearRepoVerification(elements);
   elements.repoUpdateApplyButton.disabled = true;
   elements.repoUpdateRenameIniButton.classList.add("hidden");
   elements.repoUpdateRenameIniButton.disabled = true;
@@ -122,6 +123,7 @@ async function renameIniForRepoUpdate(helpers) {
     return;
   }
 
+  clearRepoVerification(elements);
   elements.repoUpdateRenameIniButton.disabled = true;
 
   try {
@@ -129,10 +131,16 @@ async function renameIniForRepoUpdate(helpers) {
       projectPath: state.repoUpdateProject.path,
     });
     helpers.log(result.message);
-    await helpers.refreshScan();
-    await openRepoUpdate(state.repoUpdateProject, helpers);
+    if (!result.ok) {
+      elements.repoUpdateRenameIniButton.disabled = false;
+      showRepoFailure(elements, result.message || "Rename failed.");
+      return;
+    }
+    await refreshRepoUpdateAfterSuccess(state.repoUpdateProject, helpers);
+    showRepoVerification(elements, result.message || "zelda3.ini renamed.");
   } catch (error) {
     helpers.log(`Could not rename zelda3.ini: ${error}`);
+    showRepoFailure(elements, `Rename failed: ${error}`);
     elements.repoUpdateRenameIniButton.disabled = false;
   }
 }
@@ -149,6 +157,7 @@ async function applySelectedRepoChanges(helpers) {
   );
 
   elements.repoUpdateApplyButton.disabled = true;
+  clearRepoVerification(elements);
 
   try {
     const result = await helpers.call("apply_repo_update", {
@@ -166,14 +175,43 @@ async function applySelectedRepoChanges(helpers) {
     }
 
     if (!result.ok) {
+      showRepoFailure(elements, result.message || "Repo update failed.");
       elements.repoUpdateApplyButton.disabled = false;
       return;
     }
 
-    await helpers.refreshScan();
-    await openRepoUpdate(state.repoUpdateProject, helpers);
+    await refreshRepoUpdateAfterSuccess(state.repoUpdateProject, helpers);
+    showRepoVerification(elements, result.message || "Selected repo changes applied.");
   } catch (error) {
     helpers.log(`Repo update apply failed: ${error}`);
+    showRepoFailure(elements, `Repo update failed: ${error}`);
     elements.repoUpdateApplyButton.disabled = false;
   }
+}
+
+async function refreshRepoUpdateAfterSuccess(candidate, helpers) {
+  try {
+    await helpers.refreshScan();
+    await openRepoUpdate(candidate, helpers);
+  } catch (error) {
+    helpers.log(`Repo update refresh failed after a confirmed change: ${error}`);
+  }
+}
+
+function showRepoVerification(elements, message) {
+  elements.repoUpdateVerification.textContent = `✓ ${message}`;
+  elements.repoUpdateVerification.classList.remove("failed");
+  elements.repoUpdateVerification.classList.remove("hidden");
+}
+
+function showRepoFailure(elements, message) {
+  elements.repoUpdateVerification.textContent = message;
+  elements.repoUpdateVerification.classList.add("failed");
+  elements.repoUpdateVerification.classList.remove("hidden");
+}
+
+function clearRepoVerification(elements) {
+  elements.repoUpdateVerification.textContent = "";
+  elements.repoUpdateVerification.classList.remove("failed");
+  elements.repoUpdateVerification.classList.add("hidden");
 }
